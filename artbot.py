@@ -35,10 +35,10 @@ async def on_message(message):
     elif message.content.startswith('!submit') and message.author != message.author.server.me:
         try:
             curdate = datetime.date.today()
-            today = "{0}-{1}".format(curdate.month, curdate.year)
+            today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
             jsonstr = json.dumps(message.attachments[0])
             jsondict = json.loads(jsonstr)
-            filepath = os.getcwd()+today
+            filepath = os.getcwd()+"/"today
 
             url = jsondict['url']
             filename = jsondict['filename']
@@ -53,7 +53,7 @@ async def on_message(message):
 
     elif message.content.startswith('!collect') and message.author != message.author.server.me:
         curdate = datetime.date.today()
-        today = "{0}-{1}".format(curdate.month, curdate.year)
+        today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
         zf = zipfile.ZipFile("%s.zip" %today, "w", zipfile.ZIP_DEFLATED)
         src = os.path.abspath(today)
         for dirname, subdirs, files in os.walk(src):
