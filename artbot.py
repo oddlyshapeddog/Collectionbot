@@ -59,7 +59,7 @@ async def on_message(message):
         for dirname, subdirs, files in os.walk(src):
             for filename in files:
                 abs_filepath = os.path.abspath(os.path.join(dirname, filename))
-                arcname = absname[len(src)+1:]
+                arcname = abs_filepath[len(src)+1:]
                 zf.write(abs_filepath, arcname)
         zf.close()
         await client.send_file(message.channel, os.getcwd()+"/"+today+".zip")
