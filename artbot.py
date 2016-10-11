@@ -54,12 +54,15 @@ async def on_message(message):
     elif message.content.startswith('!collect') and message.author != message.author.server.me:
         curdate = datetime.date.today()
         today = "{0}-{1}".format(curdate.month, curdate.year)
-
-        for item in os.listdir(os.getcwd()+today):
-            with ZipFile(today+".zip", 'w') as comp:
-                comp.write(item)
-        ZipFile.close()
-        await client.send_file(message.channel, os.getcwd()+today+".zip")
+        zf = zipfile.ZipFile("%s.zip" %today, "w", zipfile.ZIP_DEFLATED)
+        src = os.path.abspath(today)
+        for dirname, subdirs, files in os.walk(src):
+            for filename in files:
+                abs_filepath = os.path.abspath(os.path.join(dirname, filename))
+                arcname = absname[len(src)+1:]
+                zf.write(abs_filepath, arcname)
+        zf.close()
+        await client.send_file(message.channel, os.getcwd()+"/"+today+".zip")
 
 
 client.run(botEmail, botPassword)
