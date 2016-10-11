@@ -34,7 +34,8 @@ async def on_message(message):
         await client.send_message(message.channel, "Why, hello there!")
     elif message.content.startswith('!submit') and message.author != message.author.server.me:
         try:
-            today = "{0}-{1}".format(date.month, date.year)
+            curdate = datetime.date.today()
+            today = "{0}-{1}".format(curdate.month, curdate.year)
             jsonstr = json.dumps(message.attachments[0])
             jsondict = json.loads(jsonstr)
             filepath = os.getcwd()+today
@@ -51,7 +52,8 @@ async def on_message(message):
 
 
     elif message.content.startswith('!collect') and message.author != message.author.server.me:
-        today = "{0}-{1}".format(date.month, date.year)
+        curdate = datetime.date.today()
+        today = "{0}-{1}".format(curdate.month, curdate.year)
 
         for item in os.listdir(os.getcwd()+today):
             with ZipFile(today+".zip", 'w') as comp:
