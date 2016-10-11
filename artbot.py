@@ -38,7 +38,7 @@ async def on_message(message):
             today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
             jsonstr = json.dumps(message.attachments[0])
             jsondict = json.loads(jsonstr)
-            filepath = os.getcwd()+"/"today
+            filepath = os.getcwd()+"/"+today
 
             url = jsondict['url']
             filename = jsondict['filename']
