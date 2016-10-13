@@ -6,9 +6,15 @@ import asyncio
 import os
 import sys
 
+## sheets
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+
 import zipfile
 
 ## modules
+
+spreadsheet_schema = {"Discord Name":1,"Start Date":2,"Score":3,"Currency":4,"Streak":5,"Streak Expires":6}
 
 
 ### Art bot by Ciy 1.0
@@ -18,6 +24,16 @@ logging.basicConfig(level = logging.INFO)
 
 botEmail =  ""
 botPassword = ""
+ServerSheet = ""
+
+## global googlesheets setup
+scope = ['https://spreadsheets.google.com/feeds']
+credentials = ServiceAccountCredentials.from_json_keyfile_name('',scope)
+
+
+gc = gspread.authorize(credentials)
+sheet_link = gc.open(ServerSheet).sheet1
+
 client = discord.Client()
 
 @client.event
@@ -63,6 +79,22 @@ async def on_message(message):
                 zf.write(abs_filepath, arcname)
         zf.close()
         await client.send_file(message.channel, os.getcwd()+"/"+today+".zip")
+
+    elif message.content.startswith('!register') and message.author != message.author.server.me:
+        temp_link = gc.open(ServerSheet).sheet1
+        curdate = datetime.date.today()
+        today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
+        already_registered = False
+        for sheetname in sheet_link.col_values(1):
+            if sheetname == message.author.name:
+                already_registered = True
+            else:
+                pass
+        if not already_registered:
+            temp_link.append_row([message.author.name,today,0,0,0,0])
+            await client.send_message(message.channel, "Successfully registered!")
+        else:
+            await client.send_message(message.channel, "You're already registered!")
 
 
 client.run(botEmail, botPassword)
