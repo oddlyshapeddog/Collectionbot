@@ -58,11 +58,11 @@ async def on_message(message):
 
             url = jsondict['url']
             filename = jsondict['filename']
-            if filename.endswith('.png') or filename.endswith('.jpg'):
+            if filename.endswith('.png') or filename.endswith('.jpg') or filename.endswith('.gif'):
                 os.system('wget {0} -P {1}'.format(url, filepath))
                 await client.send_message(message.channel,"Submission Successful!")
             else:
-                await client.send_message("Not a png or jpg file.")
+                await client.send_message("Not a png, jpg, or gif file.")
         except:
             pass
 
@@ -81,7 +81,8 @@ async def on_message(message):
         await client.send_file(message.channel, os.getcwd()+"/"+today+".zip")
 
     elif message.content.startswith('!register') and message.author != message.author.server.me:
-        temp_link = gc.open(ServerSheet).sheet1
+        gc = gspread.authorize(credentials)
+        sheet_link = gc.open(ServerSheet).sheet1
         curdate = datetime.date.today()
         today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
         already_registered = False
@@ -91,7 +92,7 @@ async def on_message(message):
             else:
                 pass
         if not already_registered:
-            temp_link.append_row([message.author.name,today,0,0,0,0])
+            sheet_link.append_row([message.author.name,today,0,0,0,0])
             await client.send_message(message.channel, "Successfully registered!")
         else:
             await client.send_message(message.channel, "You're already registered!")
