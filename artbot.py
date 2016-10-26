@@ -76,7 +76,9 @@ async def on_message(message):
                 if filename.endswith('.png') or filename.endswith('.jpg') or filename.endswith('.gif'):
                     os.system('wget {0} -P {1}'.format(url, filepath))
                     newscore =  int(sheet_link.cell(foundnameindex, 3).value) + 1
+                    newcurrency = int(sheet_link.cell(foundnameindex, 4).value) + 10
                     sheet_link.update_cell(foundnameindex, 3, newscore)
+                    sheet_link.update_cell(foundnameindex, 4, newcurrency)
                     sheet_link.update_cell(foundnameindex, 7, "yes")
                     sheet_link.update_cell(foundnameindex, 6, streakdate)
                     await client.send_message(message.channel,"Submission Successful! Score updated!")
@@ -107,7 +109,9 @@ async def on_message(message):
             if url[1].endswith('.png') or url[1].endswith('.jpg') or url[1].endswith('.gif'):
                 os.system('wget {0} -P {1}'.format(url[1], filepath))
                 newscore = int(sheet_link.cell(foundnameindex, 3).value)+1
+                newcurrency = int(sheet_link.cell(foundnameindex, 4).value)+10
                 sheet_link.update_cell(foundnameindex, 3, newscore)
+                sheet_link.update_cell(foundnameindex, 4, newcurrency)
                 sheet_link.update_cell(foundnameindex, 7, "yes")
                 sheet_link.update_cell(foundnameindex, 6, streakdate)
                 await client.send_message(message.channel, "Link Submission Successful! Score updated!")

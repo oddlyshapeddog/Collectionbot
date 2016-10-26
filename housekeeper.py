@@ -24,13 +24,14 @@ def housekeeper():
         workingrow = sheet_link.col_values(1).index(sheetname)+1
         if sheet_link.cell(workingrow,7).value == "yes":
             newstreakscore = int(sheet_link.cell(workingrow,5).value)+1
+            sheet_link.update_cell(workingrow, 5, newstreakscore)
         elif sheet_link.cell(workingrow,6).value == today:
             sheet_link.update_cell(workingrow,5,0)
         sheet_link.update_cell(workingrow, 7, "no")
 
 
 
-schedule.every().day.at("23:55").do(job)
+schedule.every().day.at("23:55").do(housekeeper)
 
 while True:
     schedule.run_pending()
