@@ -27,7 +27,8 @@ def housekeeper():
             sheet_link.update_cell(workingrow, 5, newstreakscore)
         elif sheet_link.cell(workingrow,6).value == today:
             sheet_link.update_cell(workingrow,5,0)
-        sheet_link.update_cell(workingrow, 7, "no")
+        if sheet_link.cell(workingrow, 7).value != "Submitted Today?":
+            sheet_link.update_cell(workingrow, 7, "no")
 
 
 

@@ -3,6 +3,7 @@ import logging
 import datetime
 import simplejson as json
 import asyncio
+import math
 import os
 import sys
 
@@ -18,7 +19,7 @@ import zipfile
 spreadsheet_schema = {"Discord Name":1,"Start Date":2,"Score":3,"Currency":4,"Streak":5,"Streak Expires":6}
 
 
-### Art bot by Ciy 1.0
+### Art bot by Ciy 1.2
 ### Simple bot for Discord designed to manage image collection.
 
 logging.basicConfig(level = logging.INFO)
@@ -73,7 +74,7 @@ async def on_message(message):
             elif sheet_link.cell(foundnameindex, 7).value == "yes":
                 await client.send_message(message.channel, "You seem to have submitted something today already!")
             else:
-                if filename.endswith('.png') or filename.endswith('.jpg') or filename.endswith('.gif'):
+                if filename.endswith('.png') or filename.endswith('.jpg') or filename.endswith('.gif') or url[1].endswith('.PNG') or url[1].endswith('.JPG') or url[1].endswith('.GIF'):
                     os.system('wget {0} -P {1}'.format(url, filepath))
                     newscore =  int(sheet_link.cell(foundnameindex, 3).value) + 1
                     newcurrency = int(sheet_link.cell(foundnameindex, 4).value) + 10
@@ -106,7 +107,7 @@ async def on_message(message):
         elif sheet_link.cell(foundnameindex, 7).value == "yes":
             await client.send_message(message.channel, "You seem to have submitted something today already!")
         else:
-            if url[1].endswith('.png') or url[1].endswith('.jpg') or url[1].endswith('.gif'):
+            if url[1].endswith('.png') or url[1].endswith('.jpg') or url[1].endswith('.gif') or url[1].endswith('.PNG') or url[1].endswith('.JPG') or url[1].endswith('.GIF'):
                 os.system('wget {0} -P {1}'.format(url[1], filepath))
                 newscore = int(sheet_link.cell(foundnameindex, 3).value)+1
                 newcurrency = int(sheet_link.cell(foundnameindex, 4).value)+10
@@ -151,7 +152,7 @@ async def on_message(message):
             await client.send_message(message.channel, "You're already registered!")
 
     elif message.content.startswith('!help') and message.author != message.author.server.me:
-        await client.send_message(message.channel,"Here's a quick little starter guide for all of you happy little artists wishing to participate.\n !register will add you to our spreadsheet where we keep track of every submission you make\n To submit content, drag and drop the file (.png, .gif, .jpg) into discord and add '!submit' as a comment to it.\n If you'd like to submit via internet link, make sure you right click the image and select 'copy image location' and submit that URL using the !linksubmit command ")
+        await client.send_message(message.channel,"Here's a quick little starter guide for all of you happy little artists wishing to participate.\n !register will add you to our spreadsheet where we keep track of every submission you make\n To submit content, drag and drop the file (.png, .gif, .jpg) into discord and add '!submit' as a comment to it.\n If you'd like to submit via internet link, make sure you right click the image and select 'copy image location' and submit that URL using the !linksubmit command\n The !timeleft command will let you know how much longer you have left to submit for the day! ")
     elif message.content.startswith('!score') and message.author != message.author.server.me:
         gc = gspread.authorize(credentials)
         sheet_link = gc.open(ServerSheet).sheet1
@@ -162,5 +163,64 @@ async def on_message(message):
                 foundscore = True
         if not foundscore:
             await client.send_message(message.channel, "I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.")
+    elif message.content.startswith('!timeleft') and message.author != message.author.server.me:
+        now = datetime.datetime.now()
+        end = datetime.datetime(now.year, now.month, now.day, hour=23,minute=55,second=0,microsecond=0)
+        difference = end - now
+        seconds_to_work = difference.seconds
+        difference_hours = math.floor(seconds_to_work / 3600)
+        seconds_to_work = seconds_to_work - 3600*difference_hours
+        difference_minutes = math.floor(seconds_to_work / 60)
+        seconds_to_work = seconds_to_work - 60*difference_minutes
+        await client.send_message(message.channel, '{0} hours, {1} minutes, and {2} seconds left to submit for today!'.format(difference_hours,difference_minutes,seconds_to_work))
+
+    elif message.content.startswith('!roleupdate') and (message.author.name == 'Ciy' or message.author.name == 'DShou'):
+        gc = gspread.authorize(credentials)
+        sheet_link = gc.open(ServerSheet).sheet1
+        serv = message.server
+        await client.send_message(message.channel, "Updating Streaks...")
+        for sheetname in sheet_link.col_values(1):
+            try:
+                streak = int(sheet_link.cell(sheet_link.col_values(1).index(sheetname)+1,5).value)
+            except:
+                streak = 0
+            for person in serv.members:
+                if sheetname == person.name:
+                    cur_member = person
+                    print("testing for {0}".format(cur_member))
+            if streak >= 100:
+                for rank in serv.roles:
+                    if rank.name == "100+ Streak":
+                        await client.add_roles(cur_member,rank)
+            elif streak >= 60 and streak < 100:
+                for rank in serv.roles:
+                    if rank.name == "60+ Streak":
+                        await client.add_roles(cur_member,rank)
+            elif streak >= 30 and streak < 60:
+                for rank in serv.roles:
+                    if rank.name == "30+ Streak":
+                        await client.add_roles(cur_member,rank)
+            elif streak >= 25 and streak < 30:
+                for rank in serv.roles:
+                    if rank.name == "25+ Streak":
+                        await client.add_roles(cur_member,rank)
+            elif streak >=20 and streak < 25:
+                for rank in serv.roles:
+                    if rank.name == "20+ Streak":
+                        await client.add_roles(cur_member,rank)
+            elif streak >=15 and streak < 20:
+                for rank in serv.roles:
+                    if rank.name == "15+ Streak":
+                        await client.add_roles(cur_member,rank)
+            elif streak >=10 and streak < 15:
+                for rank in serv.roles:
+                    if rank.name == "10+ Streak":
+                        await client.add_roles(cur_member,rank)
+            elif streak >=5 and streak < 10:
+                for rank in serv.roles:
+                    if rank.name == "5+ Streak":
+                        print("attempting to give role to {0}".format(cur_member.name))
+                        await client.add_roles(cur_member,rank)
+        await client.send_message(message.channel, "Updating roles was a happy little success!")
 
 client.run(botEmail, botPassword)
