@@ -152,7 +152,7 @@ async def on_message(message):
             await client.send_message(message.channel, "You're already registered!")
 
     elif message.content.startswith('!help') and message.author != message.author.server.me:
-        await client.send_message(message.channel,"Here's a quick little starter guide for all of you happy little artists wishing to participate.\n !register will add you to our spreadsheet where we keep track of every submission you make\n To submit content, drag and drop the file (.png, .gif, .jpg) into discord and add '!submit' as a comment to it.\n If you'd like to submit via internet link, make sure you right click the image and select 'copy image location' and submit that URL using the !linksubmit command\n The !timeleft command will let you know how much longer you have left to submit for the day! ")
+        await client.send_message(message.channel,"Here's a quick little starter guide for all of you happy little artists wishing to participate.\n !register will add you to our spreadsheet where we keep track of every submission you make\n To submit content, drag and drop the file (.png, .gif, .jpg) into discord and add '!submit' as a comment to it.\n If you'd like to submit via internet link, make sure you right click the image and select 'copy image location' and submit that URL using the !linksubmit command\n The !timeleft command will let you know how much longer you have left to submit for the day! \n \n For those of our older artists, you may access the nsfw channels by typing !nsfwjoin and you can hide those channels by typing !nsfwleave. \n When submitting nsfwcontent ***please use !nsfwsubmit and !nsfwlinksubmit respectively!!***")
     elif message.content.startswith('!score') and message.author != message.author.server.me:
         gc = gspread.authorize(credentials)
         sheet_link = gc.open(ServerSheet).sheet1
@@ -222,5 +222,84 @@ async def on_message(message):
                         print("attempting to give role to {0}".format(cur_member.name))
                         await client.add_roles(cur_member,rank)
         await client.send_message(message.channel, "Updating roles was a happy little success!")
+    elif message.content.startswith('!nsfwjoin') and message.author != message.author.server.me:
+        serv = message.author.server
+        for rank in serv.roles:
+            if rank.name == "NSFW Artists":
+                await client.add_roles(message.author,rank)
+                await client.send_message(message.channel, "You should now have access to the NSFW channels, Oh my!")
+    elif message.content.startswith('!nsfwleave') and message.author != message.author.server.me:
+        serv = message.author.server
+        for rank in serv.roles:
+            if rank.name == "NSFW Artists":
+                await client.remove_roles(message.author, rank)
+                await client.send_message(message.channel, "NSFW channels have been hidden.")
+    elif message.content.startswith('!nsfwlinksubmit') and message.author != message.author.server.me:
+        url = message.content.split(" ")
+        curdate = datetime.date.today()
+        potentialstreak = curdate + datetime.timedelta(days=7)
+        today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
+        streakdate = "{0}-{1}-{2}".format(potentialstreak.month, potentialstreak.day, potentialstreak.year)
+        filepath = os.getcwd()+"/"+today
+
+        gc = gspread.authorize(credentials)
+        sheet_link = gc.open(ServerSheet).sheet1
+
+        foundname = False
+        for sheetname in sheet_link.col_values(1):
+            if sheetname == message.author.name:
+                foundname = True
+                foundnameindex = sheet_link.col_values(1).index(sheetname)+1
+        if not foundname:
+            await client.send_message(message.channel, "I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.")
+        elif sheet_link.cell(foundnameindex, 7).value == "yes":
+            await client.send_message(message.channel, "You seem to have submitted something today already!")
+        else:
+            if url[1].endswith('.png') or url[1].endswith('.jpg') or url[1].endswith('.gif') or url[1].endswith('.PNG') or url[1].endswith('.JPG') or url[1].endswith('.GIF'):
+                newscore = int(sheet_link.cell(foundnameindex, 3).value)+1
+                newcurrency = int(sheet_link.cell(foundnameindex, 4).value)+10
+                sheet_link.update_cell(foundnameindex, 3, newscore)
+                sheet_link.update_cell(foundnameindex, 4, newcurrency)
+                sheet_link.update_cell(foundnameindex, 7, "yes")
+                sheet_link.update_cell(foundnameindex, 6, streakdate)
+                await client.send_message(message.channel, "Link Submission Successful! Score updated!")
+            else:
+                await client.send_message("Not a png, jpg, or gif file")
+    elif message.content.startswith('!nsfwsubmit') and message.author != message.author.server.me:
+        try:
+            curdate = datetime.date.today()
+            potentialstreak = curdate + datetime.timedelta(days=7)
+            today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
+            streakdate = "{0}-{1}-{2}".format(potentialstreak.month, potentialstreak.day, potentialstreak.year)
+            jsonstr = json.dumps(message.attachments[0])
+            jsondict = json.loads(jsonstr)
+            filepath = os.getcwd()+"/"+today
+
+            url = jsondict['url']
+            filename = jsondict['filename']
+            gc = gspread.authorize(credentials)
+            sheet_link = gc.open(ServerSheet).sheet1
+            foundname = False
+            for sheetname in sheet_link.col_values(1):
+                if sheetname == message.author.name:
+                    foundname = True
+                    foundnameindex = sheet_link.col_values(1).index(sheetname)+1
+            if not foundname:
+                await client.send_message(message.channel, "I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.")
+            elif sheet_link.cell(foundnameindex, 7).value == "yes":
+                await client.send_message(message.channel, "You seem to have submitted something today already!")
+            else:
+                if filename.endswith('.png') or filename.endswith('.jpg') or filename.endswith('.gif') or url[1].endswith('.PNG') or url[1].endswith('.JPG') or url[1].endswith('.GIF'):
+                    newscore =  int(sheet_link.cell(foundnameindex, 3).value) + 1
+                    newcurrency = int(sheet_link.cell(foundnameindex, 4).value) + 10
+                    sheet_link.update_cell(foundnameindex, 3, newscore)
+                    sheet_link.update_cell(foundnameindex, 4, newcurrency)
+                    sheet_link.update_cell(foundnameindex, 7, "yes")
+                    sheet_link.update_cell(foundnameindex, 6, streakdate)
+                    await client.send_message(message.channel,"Submission Successful! Score updated!")
+                else:
+                    await client.send_message("Not a png, jpg, or gif file.")
+        except:
+            pass
 
 client.run(botEmail, botPassword)
