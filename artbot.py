@@ -150,7 +150,7 @@ async def on_message(message):
             sheet_link.append_row([message.author.name,today,0,0,0,0,"no"])
             serv = message.server
             for rank in serv.roles:
-                if rank.name == "Artists" or "0+ Streak":
+                if rank.name == "Artists" or rank.name == "0+ Streak":
                     await client.add_roles(message.author, rank)
             await client.send_message(message.channel, "```diff\n+ Successfully registered!\n```")
         else:
@@ -250,13 +250,13 @@ async def on_message(message):
     elif message.content.lower().startswith('!nsfwjoin') and message.author != message.author.server.me:
         serv = message.author.server
         for rank in serv.roles:
-            if rank.name == "NSFW Artists":
+            if rank.name == "NSFW Artist":
                 await client.add_roles(message.author,rank)
                 await client.send_message(message.channel, "```Markdown\nYou should now have access to the NSFW channels, Oh my!```")
     elif message.content.lower().startswith('!nsfwleave') and message.author != message.author.server.me:
         serv = message.author.server
         for rank in serv.roles:
-            if rank.name == "NSFW Artists":
+            if rank.name == "NSFW Artist":
                 await client.remove_roles(message.author, rank)
                 await client.send_message(message.channel, "```Markdown\nNSFW channels have been hidden.\n```")
     elif message.content.lower().startswith('!nsfwlinksubmit') and message.author != message.author.server.me:
