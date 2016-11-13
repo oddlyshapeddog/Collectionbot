@@ -18,9 +18,10 @@ import zipfile
 
 spreadsheet_schema = {"Discord Name":1,"Start Date":2,"Score":3,"Currency":4,"Streak":5,"Streak Expires":6,"Submitted Today?":7,"Raffle Submission?":8}
 months = {1:"January",2:"February",3:"March",4:"April",5:"May",6:"June",7:"July",8:"August",9:"September",10:"October",11:"November",12:"December"}
+streak_roles = ["0+ Streak","5+ Streak","10+ Streak","15+ Streak","20+ Streak","25+ Streak","30+ Streak","60+ Streak","100+ Streak","Admins","Community Admins","Type !help for info","@everyone","NSFW Artist", "Artists"]
 
 
-### Art bot by Ciy 1.3
+### Art bot by Ciy 1.3.1
 ### Simple bot for Discord designed to manage image collection.
 
 logging.basicConfig(level = logging.INFO)
@@ -147,17 +148,20 @@ async def on_message(message):
             else:
                 pass
         if not already_registered:
-            sheet_link.append_row([message.author.name,today,0,0,0,0,"no"])
+            sheet_link.append_row([message.author.name,today,0,0,0,0,"no","no"])
             serv = message.server
             for rank in serv.roles:
-                if rank.name == "Artists" or rank.name == "0+ Streak":
+                if rank.name == "0+ Streak":
+                    await client.add_roles(message.author, rank)
+            for rank in serv.roles:
+                if rank.name == "Artists":
                     await client.add_roles(message.author, rank)
             await client.send_message(message.channel, "```diff\n+ Successfully registered!\n```")
         else:
             await client.send_message(message.channel, "```Markdown\n# You're already registered!\n```")
 
     elif message.content.lower().startswith('!help') and message.author != message.author.server.me:
-        await client.send_message(message.channel,"```Markdown\n# Here's a quick little starter guide for all of you happy little artists wishing to participate.\n# !register will add you to our spreadsheet where we keep track of every submission you make\n# To submit content, drag and drop the file (.png, .gif, .jpg) into discord and add '!submit' as a comment to it.\n# If you'd like to submit via internet link, make sure you right click the image and select 'copy image location' and submit that URL using the !linksubmit command\n# The !timeleft command will let you know how much longer you have left to submit for the day!\n# To see your current scorecard, type !stats \n``` \n ```diff\n - For those of our older artists, you may access the nsfw channels by typing !nsfwjoin and you can hide those channels by typing !nsfwleave. \n - When submitting nsfwcontent please use !nsfwsubmit and !nsfwlinksubmit respectively!!\n```")
+        await client.send_message(message.channel,"```Markdown\n# Here's a quick little starter guide for all of you happy little artists wishing to participate.\n# !register will add you to our spreadsheet where we keep track of every submission you make\n# To submit content, drag and drop the file (.png, .gif, .jpg) into discord and add '!submit' as a comment to it.\n# If you'd like to submit via internet link, make sure you right click the image and select 'copy image location' and submit that URL using the !linksubmit command\n# The !timeleft command will let you know how much longer you have left to submit for the day!\n# To see your current scorecard, type !stats \n# To see your achievement status, type !ach\n``` \n ```diff\n - For those of our older artists, you may access the nsfw channels by typing !nsfwjoin and you can hide those channels by typing !nsfwleave. \n - When submitting nsfwcontent please use !nsfwsubmit and !nsfwlinksubmit respectively!!\n```")
     elif message.content.lower().startswith('!stats') and message.author != message.author.server.me:
         gc = gspread.authorize(credentials)
         sheet_link = gc.open(ServerSheet).sheet1
@@ -177,14 +181,29 @@ async def on_message(message):
             streak_expiration_day = streak_expiration[1]
             streak_expiration_year = streak_expiration[2]
             submitted_today = sheet_link.cell(rownumber, 7).value
-            stats_card = "```Python\n @{0} - score card:\n```\n```diff\n+ Current Score: {1}\n+ Currency: {2}\n+ Current Streak: {3}\n- Streak Expires: {4} {5}, {6}\n".format(user_name,current_score,currency_amount,current_streak,streak_expiration_month,streak_expiration_day,streak_expiration_year)
+            raffle_completed = sheet_link.cell(rownumber, 8).value
+            stats_card = "```Python\n @{0} - Score Card:\n```\n```diff\n+ Current Score: {1}\n+ Currency: {2}\n+ Current Streak: {3}\n- Streak Expires: {4} {5}, {6}\n".format(user_name,current_score,currency_amount,current_streak,streak_expiration_month,streak_expiration_day,streak_expiration_year)
             if submitted_today == 'yes':
-                stats_card = stats_card +"+ you have submitted today.\n```"
+                stats_card = stats_card +"+ You have submitted today.\n"
             else:
-                stats_card = stats_card +"- you have not submitted today.\n```"
+                stats_card = stats_card +"- You have not submitted today.\n"
+            if raffle_completed == 'yes':
+                stats_card = stats_card +"+ You have completed the raffle prompt this month.\n```"
+            else:
+                stats_card = stats_card +"- You have not completed the raffle prompt this month.\n```"
             await client.send_message(message.channel, stats_card)
         else:
             await client.send_message(message.channel, "```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
+    elif message.content.lower().startswith('!ach') and message.author != message.author.server.me:
+        serv = message.server
+        ach_card = "```Python\n @{0} - Achievements\n# Note: unlocked ones are in green.\n```\n```diff\n".format(message.author.name)
+        for rank in serv.roles:
+            if rank in message.author.roles and rank.name not in streak_roles:
+                ach_card = ach_card + '+ {0}\n'.format(rank.name)
+            if rank not in message.author.roles and rank.name not in streak_roles:
+                ach_card = ach_card + '# {0}\n'.format(rank.name)
+        ach_card = ach_card + "```"
+        await client.send_message(message.channel, ach_card)
     elif message.content.lower().startswith('!timeleft') and message.author != message.author.server.me:
         now = datetime.datetime.now()
         end = datetime.datetime(now.year, now.month, now.day, hour=23,minute=55,second=0,microsecond=0)
@@ -208,7 +227,7 @@ async def on_message(message):
             try:
                 streak = int(sheet_link.cell(sheet_link.col_values(1).index(sheetname)+1,5).value)
             except:
-                streak = 0
+                streak = -1
             for person in serv.members:
                 if sheetname == person.name:
                     cur_member = person
@@ -244,7 +263,6 @@ async def on_message(message):
             elif streak >=5 and streak < 10:
                 for rank in serv.roles:
                     if rank.name == "5+ Streak":
-                        print("attempting to give role to {0}".format(cur_member.name))
                         await client.add_roles(cur_member,rank)
         await client.send_message(message.channel, "```diff\n+ Updating roles was a happy little success!\n```")
     elif message.content.lower().startswith('!nsfwjoin') and message.author != message.author.server.me:
