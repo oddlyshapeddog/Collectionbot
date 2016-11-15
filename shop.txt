@@ -1,0 +1,7 @@
+mystery -300
+dshouraffleone -20
+dshouraffletwo -50
+freesubmission -100
+vacation -300
+itembox -30
+petbox -50
