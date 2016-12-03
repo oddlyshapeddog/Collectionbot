@@ -24,11 +24,10 @@ admins = ["Ciy","DShou","SilviaWindmane","Fluttair|Thunderbolt","Mal Winters","k
 eight_ball = ["It is certain.","It is decidedly so.","Without a doubt.","Yes, definitely.","You may rely on it.","As I see it, yes.","Most likely.","Outlook good.","Yes.","Signs point to yes.","Reply hazy try again.","Ask again later.","Better not tell you now.","Cannot predict now.","Concentrate and ask again.","Don't count on it.","My reply is no.","My sources say no.","Outlook not so good.","Very doubtful."]
 
 
-### Art bot by Ciy 1.3.1
+### Art bot by Ciy 1.5
 ### Simple bot for Discord designed to manage image collection.
 
 logging.basicConfig(level = logging.INFO)
-
 botEmail =  ""
 botPassword = ""
 ServerSheet = ""
@@ -79,7 +78,7 @@ async def on_message(message):
             elif sheet_link.cell(foundnameindex, 7).value == "yes":
                 await client.send_message(message.channel, "```diff\n- You seem to have submitted something today already.\n```")
             else:
-                if filename.endswith('.png') or filename.endswith('.jpg') or filename.endswith('.gif') or url[1].endswith('.PNG') or url[1].endswith('.JPG') or url[1].endswith('.GIF'):
+                if filename.endswith('.png') or filename.endswith('.jpg') or filename.endswith('.gif') or filename.endswith('.PNG') or filename.endswith('.JPG') or filename.endswith('.GIF'):
                     os.system('wget {0} -P {1}'.format(url, filepath))
                     newscore =  int(sheet_link.cell(foundnameindex, 12).value) + 1
                     newcurrency = int(sheet_link.cell(foundnameindex, 4).value) + 10
@@ -198,10 +197,15 @@ async def on_message(message):
         sheet_link = gc.open(ServerSheet).sheet1
         rownumber = 0
         foundscore = False
-        for sheetname in sheet_link.col_values(1):
-            if sheetname == message.author.name:
-                rownumber = sheet_link.col_values(1).index(sheetname)+1
-                foundscore = True
+        try:
+            rownumber = sheet_link.col_values(1).index(message.author.name)+1
+            foundscore = True
+        except:
+            foundscore = False
+#        for sheetname in sheet_link.col_values(1):
+#            if sheetname == message.author.name:
+#                rownumber = sheet_link.col_values(1).index(sheetname)+1
+#                foundscore = True
         if foundscore == True:
             user_name = sheet_link.cell(rownumber, 1).value
             current_score = sheet_link.cell(rownumber, 12).value
@@ -476,6 +480,44 @@ async def on_message(message):
                     await client.add_roles(person, rank)
                     achievement_receivers = achievement_receivers + " " +person.name
         await client.send_message(message.channel, "```Markdown\n# {0} awarded to {1}\n```".format(achievement_name,achievement_receivers))
+    elif message.content.lower().startswith('!vacation') and message.author != message.author.server.me:
+        gc = gspread.authorize(credentials)
+        sheet_link = gc.open(ServerSheet).sheet1
+        working_index = 0
+        price = 100
+        curdate = datetime.date.today()
+        potentialstreak = curdate + datetime.timedelta(days=30)
+        today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
+        streakdate = "{0}-{1}-{2}".format(potentialstreak.month, potentialstreak.day, potentialstreak.year)
+        def check(msg):
+            return msg.content.startswith('!')
+        try:
+            working_index = sheet_link.col_values(1).index(message.author.name)+1
+            buyer_amount = int(sheet_link.cell(working_index,4).value)
+            if buyer_amount >= price:
+                await client.send_message(message.channel, "```Python\n@{0}\n```\n```Markdown\n# You're about to purchase a 30 day vacation to protect your streak for 100 credits. (any new submissions will reset this to 7 days). To confirm and buy type !yes, to decline, type !no.\n```".format(message.author.name))
+                confirm = await client.wait_for_message(author=message.author,check=check)
+                if confirm.content.lower().startswith('!yes'):
+                    new_buyer_balance = buyer_amount - price
+                    sheet_link.update_cell(working_index, 4, new_buyer_balance)
+                    sheet_link.update_cell(working_index, 6, streakdate)
+                    await client.send_message(message.channel, "```diff\n+ Vacation purchased, your streak now expires on {0} {1}, {2}. Bon Voyage!\n```".format(months[potentialstreak.month],potentialstreak.day,potentialstreak.year))
+                elif confirm.content.lower().startswith('!no'):
+                    await client.send_message(message.channel, "```Markdown\n# Transaction cancelled.\n```")
+            else:
+                await client.send_message(message.channel, "```Markdown\n- Not enough credits. {0} needed, you have {1}```".format())
+        except:
+            await client.send_message(message.channel, "```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
+    elif message.content.lower().startswith('!markraffle') and message.author.name in admins:
+        try:
+            gc = gspread.authorize(credentials)
+            receiver = message.mentions[0].name
+            sheet_link = gc.open(ServerSheet).sheet1
+            working_row = sheet_link.col_values(1).index(receiver)+1
+            sheet_link.update_cell(working_row,8,"yes")
+            await client.send_message(message.channel,"```diff\n+ Raffle submission marked for: {0}\n```".format(receiver))
+        except:
+            await client.send_message(message.channel,"```diff\n- Something went wrong.\n```")
     elif message.content.lower().startswith('!buy') and message.author != message.author.server.me:
         #under construction.
         parse = message.content.split(" ")
