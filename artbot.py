@@ -453,7 +453,7 @@ async def on_message(message):
             fp.close()
     elif message.content.lower().startswith('!8ball') and message.author != message.author.server.me:
         fp = open('unlocked8ball.txt', 'r+')
-        if(message.author.name+'\n' in fp.readlines()):
+        if(True):
             await client.send_message(message.channel,'`{0} shakes their eight ball..`\n:8ball: `{1}`'.format(message.author.name, random.choice(eight_ball)))
         fp.close()
     elif message.content.lower().startswith('!award') and message.author.name in admins:
