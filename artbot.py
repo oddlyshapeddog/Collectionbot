@@ -20,7 +20,7 @@ import zipfile
 spreadsheet_schema = {"Discord Name":1,"Start Date":2,"Level":3,"Currency":4,"Streak":5,"Streak Expires":6,"Submitted Today?":7,"Raffle Prompt Submitted":8,"Week Team":9,"Month Team":10,"Referred By":11,"Prompts Added":12,"Current XP":13}
 months = {1:"January",2:"February",3:"March",4:"April",5:"May",6:"June",7:"July",8:"August",9:"September",10:"October",11:"November",12:"December"}
 streak_roles = ["0+ Streak","5+ Streak","10+ Streak","15+ Streak","20+ Streak","25+ Streak","30+ Streak","60+ Streak","90+ Streak","120+ Streak","150+ Streak","200+ Streak","250+ Streak","300+ Streak","Admins","Raffle","Community Admins","Type !help for info","@everyone","NSFW Artist", "Artists", "Head Admins"]
-admins = ["Ciy","DShou","SilviaWindmane","Fluttair|Thunderbolt","Mal Winters","kawaiipony","aFluffyGuy","Skye","~ <3"]
+admins = ["Ciy","DShou","SilviaWindmane","Fluttair|Thunderbolt","Mal Winters","kawaiipony","aFluffyGuy","Skye","~ <3","Scruffasus"]
 eight_ball = ["It is certain.","It is decidedly so.","Without a doubt.","Yes, definitely.","You may rely on it.","As I see it, yes.","Most likely.","Outlook good.","Yes.","Signs point to yes.","Reply hazy try again.","Ask again later.","Better not tell you now.","Cannot predict now.","Concentrate and ask again.","Don't count on it.","My reply is no.","My sources say no.","Outlook not so good.","Very doubtful."]
 
 channel_ids = {"class_1":"241060721994104833", "class_2":"236678008562384896"}
@@ -68,10 +68,10 @@ async def on_message(message):
             gc = gspread.authorize(credentials)
             sheet_link = gc.open(ServerSheet).sheet1
 
-            for sheetname in sheet_link.col_values(1):
-                if sheetname == message.author.name:
+            for sheetname in sheet_link.col_values(14):
+                if sheetname == message.author.id:
                     foundname = True
-                    foundnameindex = sheet_link.col_values(1).index(sheetname)+1
+                    foundnameindex = sheet_link.col_values(14).index(sheetname)+1
             if not foundname:
                 await client.send_message(message.channel, "```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
             elif sheet_link.cell(foundnameindex, 7).value == "yes":
@@ -93,14 +93,14 @@ async def on_message(message):
                         new_xp_total = new_xp_total - next_level_required_xp
                         sheet_link.update_cell(foundnameindex,3,current_level)
                         sheet_link.update_cell(foundnameindex,13,new_xp_total)
-                        await client.send_message(message.channel,"```Markdown\n# @{0} Level Up! You are now level {1}!\n```".format(message.author,current_level))
+                        await client.send_message(message.channel,"```Markdown\n# @{0} Level Up! You are now level {1}!\n```".format(message.author.name,current_level))
                     else:
                         sheet_link.update_cell(foundnameindex,13,new_xp_total)
                     sheet_link.update_cell(foundnameindex, 12, newscore)
                     sheet_link.update_cell(foundnameindex, 4, newcurrency)
                     sheet_link.update_cell(foundnameindex, 7, "yes")
                     sheet_link.update_cell(foundnameindex, 6, streakdate)
-                    await client.send_message(message.channel, "```diff\n+ @{0} Link Submission Successful! Score updated!\n+ {1}xp gained.```".format(message.author,xp_gained))
+                    await client.send_message(message.channel, "```diff\n+ @{0} Link Submission Successful! Score updated!\n+ {1}xp gained.```".format(message.author.name,xp_gained))
                 else:
                     await client.send_message("```diff\n- Not a png, jpg, or gif file\n```")
         else:
@@ -119,10 +119,10 @@ async def on_message(message):
                 gc = gspread.authorize(credentials)
                 sheet_link = gc.open(ServerSheet).sheet1
                 foundscore = False
-                for sheetname in sheet_link.col_values(1):
-                    if sheetname == message.author.name:
+                for sheetname in sheet_link.col_values(14):
+                    if sheetname == message.author.id:
                         foundname = True
-                        foundnameindex = sheet_link.col_values(1).index(sheetname)+1
+                        foundnameindex = sheet_link.col_values(14).index(sheetname)+1
                 if not foundname:
                     await client.send_message(message.channel, "```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
                 elif sheet_link.cell(foundnameindex, 7).value == "yes":
@@ -156,75 +156,14 @@ async def on_message(message):
                         await client.send_message("```diff\n- Not a png, jpg, or gif file.```")
             except:
                 pass
-    elif message.content.lower().startswith('!linksubmit') and message.author != message.author.server.me:
-        url = message.content.split(" ")
-        curdate = datetime.date.today()
-        potentialstreak = curdate + datetime.timedelta(days=7)
-        today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
-        streakdate = "{0}-{1}-{2}".format(potentialstreak.month, potentialstreak.day, potentialstreak.year)
-        filepath = os.getcwd()+"/"+today
-
-        gc = gspread.authorize(credentials)
-        sheet_link = gc.open(ServerSheet).sheet1
-
-        for sheetname in sheet_link.col_values(1):
-            if sheetname == message.author.name:
-                foundname = True
-                foundnameindex = sheet_link.col_values(1).index(sheetname)+1
-        if not foundname:
-            await client.send_message(message.channel, "```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
-        elif sheet_link.cell(foundnameindex, 7).value == "yes":
-            await client.send_message(message.channel, "```diff\n- You seem to have submitted something today already!\n```")
-        else:
-            if url[1].endswith('.png') or url[1].endswith('.jpg') or url[1].endswith('.gif') or url[1].endswith('.PNG') or url[1].endswith('.JPG') or url[1].endswith('.GIF'):
-                os.system('wget {0} -P {1}'.format(url[1], filepath))
-                newscore = int(sheet_link.cell(foundnameindex, 12).value)+1
-                newcurrency = int(sheet_link.cell(foundnameindex, 4).value)+10
-                current_streak = int(sheet_link.cell(foundnameindex,5).value)
-                current_xp = int(sheet_link.cell(foundnameindex,13).value)
-                xp_gained = 20 + int(math.floor(current_streak/2))
-                current_level = int(sheet_link.cell(foundnameindex,3).value)
-                next_level_required_xp = current_level*10 + 50
-                new_xp_total = current_xp + xp_gained
-                if new_xp_total >= next_level_required_xp:
-                    current_level = current_level + 1
-                    new_xp_total = new_xp_total - next_level_required_xp
-                    sheet_link.update_cell(foundnameindex,3,current_level)
-                    sheet_link.update_cell(foundnameindex,13,new_xp_total)
-                    await client.send_message(message.channel,"```Markdown\n# @{0} Level Up! You are now level {1}!\n```".format(message.author,current_level))
-                else:
-                    sheet_link.update_cell(foundnameindex,13,new_xp_total)
-                sheet_link.update_cell(foundnameindex, 12, newscore)
-                sheet_link.update_cell(foundnameindex, 4, newcurrency)
-                sheet_link.update_cell(foundnameindex, 7, "yes")
-                sheet_link.update_cell(foundnameindex, 6, streakdate)
-                await client.send_message(message.channel, "```diff\n+ Link Submission Successful! Score updated!\n+ {0}xp gained.```".format(xp_gained))
-            else:
-                await client.send_message("```diff\n- Not a png, jpg, or gif file\n```")
-
-    elif message.content.lower().startswith('!collect') and message.author != message.author.server.me:
-        collecttime = message.content.split(" ")
-        today = collecttime[1]
-        #curdate = datetime.date.today()
-        #today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
-        zf = zipfile.ZipFile("%s.zip" %today, "w", zipfile.ZIP_DEFLATED)
-        src = os.path.abspath(today)
-        for dirname, subdirs, files in os.walk(src):
-            for filename in files:
-                abs_filepath = os.path.abspath(os.path.join(dirname, filename))
-                arcname = abs_filepath[len(src)+1:]
-                zf.write(abs_filepath, arcname)
-        zf.close()
-        await client.send_file(message.channel, os.getcwd()+"/"+today+".zip")
-
     elif message.content.lower().startswith('!register') and message.author != message.author.server.me:
         gc = gspread.authorize(credentials)
         sheet_link = gc.open(ServerSheet).sheet1
         curdate = datetime.date.today()
         today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
         already_registered = False
-        for sheetname in sheet_link.col_values(1):
-            if sheetname == message.author.name:
+        for sheetname in sheet_link.col_values(14):
+            if sheetname == message.author.id:
                 already_registered = True
             else:
                 pass
@@ -249,7 +188,7 @@ async def on_message(message):
         rownumber = 0
         foundscore = False
         try:
-            rownumber = sheet_link.col_values(1).index(message.author.name)+1
+            rownumber = sheet_link.col_values(14).index(message.author.id)+1
             foundscore = True
         except:
             foundscore = False
@@ -299,7 +238,7 @@ async def on_message(message):
             await client.send_message(message.channel, "```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
     elif message.content.lower().startswith('!ach') and message.author != message.author.server.me:
         serv = message.server
-        ach_card = "```Python\n @{0} - Achievements\n# Note: unlocked ones are in green.\n```\n```diff\n".format(message.author.name)
+        ach_card = "```Python\n @{0} - Achievements\n# Note: unlocked ones are in green and denoted with a '+'.\n```\n```diff\n".format(message.author.name)
         for rank in serv.roles:
             if rank in message.author.roles and rank.name not in streak_roles:
                 ach_card = ach_card + '+ {0}\n'.format(rank.name)
@@ -400,104 +339,6 @@ async def on_message(message):
             if rank.name == "NSFW Artist":
                 await client.remove_roles(message.author, rank)
                 await client.send_message(message.channel, "```Markdown\nNSFW channels have been hidden.\n```")
-    elif message.content.lower().startswith('!nsfwlinksubmit') and message.author != message.author.server.me:
-        url = message.content.split(" ")
-        curdate = datetime.date.today()
-        potentialstreak = curdate + datetime.timedelta(days=7)
-        today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
-        streakdate = "{0}-{1}-{2}".format(potentialstreak.month, potentialstreak.day, potentialstreak.year)
-        filepath = os.getcwd()+"/"+today
-
-        gc = gspread.authorize(credentials)
-        sheet_link = gc.open(ServerSheet).sheet1
-
-        foundname = False
-        for sheetname in sheet_link.col_values(1):
-            if sheetname == message.author.name:
-                foundname = True
-                foundnameindex = sheet_link.col_values(1).index(sheetname)+1
-        if not foundname:
-            await client.send_message(message.channel, "```diff\n - I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
-        elif sheet_link.cell(foundnameindex, 7).value == "yes":
-            await client.send_message(message.channel, "```diff\n - You seem to have submitted something today already!\n```")
-        else:
-            if url[1].endswith('.png') or url[1].endswith('.jpg') or url[1].endswith('.gif') or url[1].endswith('.PNG') or url[1].endswith('.JPG') or url[1].endswith('.GIF'):
-                newscore = int(sheet_link.cell(foundnameindex, 12).value)+1
-                newcurrency = int(sheet_link.cell(foundnameindex, 4).value)+10
-                current_streak = int(sheet_link.cell(foundnameindex,5).value)
-                current_xp = int(sheet_link.cell(foundnameindex,13).value)
-                xp_gained = 20 + int(math.floor(current_streak/2))
-                current_level = int(sheet_link.cell(foundnameindex,3).value)
-                next_level_required_xp = current_level*10 + 50
-                new_xp_total = current_xp + xp_gained
-                if new_xp_total >= next_level_required_xp:
-                    current_level = current_level + 1
-                    new_xp_total = new_xp_total - next_level_required_xp
-                    sheet_link.update_cell(foundnameindex,3,current_level)
-                    sheet_link.update_cell(foundnameindex,13,new_xp_total)
-                    await client.send_message(message.channel,"```Markdown\n# @{0} Level Up! You are now level {1}!\n```".format(message.author,current_level))
-                else:
-                    sheet_link.update_cell(foundnameindex,13,new_xp_total)
-                sheet_link.update_cell(foundnameindex, 12, newscore)
-                sheet_link.update_cell(foundnameindex, 4, newcurrency)
-                sheet_link.update_cell(foundnameindex, 7, "yes")
-                sheet_link.update_cell(foundnameindex, 6, streakdate)
-                await client.send_message(message.channel, "```diff\n+Link Submission Successful! Score updated!\n+ {0}xp gained.\n```".format(xp_gained))
-            else:
-                await client.send_message("```diff\n- Not a png, jpg, or gif file\n```")
-    elif message.content.lower().startswith('!nsfwsubmit') and message.author != message.author.server.me:
-        try:
-            curdate = datetime.date.today()
-            potentialstreak = curdate + datetime.timedelta(days=7)
-            today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
-            streakdate = "{0}-{1}-{2}".format(potentialstreak.month, potentialstreak.day, potentialstreak.year)
-            jsonstr = json.dumps(message.attachments[0])
-            jsondict = json.loads(jsonstr)
-            filepath = os.getcwd()+"/"+today
-
-            url = jsondict['url']
-            filename = jsondict['filename']
-            gc = gspread.authorize(credentials)
-            sheet_link = gc.open(ServerSheet).sheet1
-            foundname = False
-            for sheetname in sheet_link.col_values(1):
-                if sheetname == message.author.name:
-                    foundname = True
-                    foundnameindex = sheet_link.col_values(1).index(sheetname)+1
-            if not foundname:
-                await client.send_message(message.channel, "```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
-            elif sheet_link.cell(foundnameindex, 7).value == "yes":
-                await client.send_message(message.channel, "```diff\n- You seem to have submitted something today already!\n```")
-            else:
-                if filename.endswith('.png') or filename.endswith('.jpg') or filename.endswith('.gif') or url[1].endswith('.PNG') or url[1].endswith('.JPG') or url[1].endswith('.GIF'):
-                    newscore =  int(sheet_link.cell(foundnameindex, 12).value) + 1
-                    newcurrency = int(sheet_link.cell(foundnameindex, 4).value) + 10
-                    current_streak = int(sheet_link.cell(foundnameindex,5).value)
-                    current_xp = int(sheet_link.cell(foundnameindex,13).value)
-                    xp_gained = 20 + int(math.floor(current_streak/2))
-                    current_level = int(sheet_link.cell(foundnameindex,3).value)
-                    next_level_required_xp = current_level*10 + 50
-                    new_xp_total = current_xp + xp_gained
-                    if new_xp_total >= next_level_required_xp:
-                        current_level = current_level + 1
-                        new_xp_total = new_xp_total - next_level_required_xp
-                        sheet_link.update_cell(foundnameindex,3,current_level)
-                        sheet_link.update_cell(foundnameindex,13,new_xp_total)
-                        await client.send_message(message.channel,"```Markdown\n# @{0} Level Up! You are now level {1}!\n```".format(message.author,current_level))
-                    else:
-                        sheet_link.update_cell(foundnameindex,13,new_xp_total)
-                    sheet_link.update_cell(foundnameindex, 12, newscore)
-                    sheet_link.update_cell(foundnameindex, 4, newcurrency)
-                    sheet_link.update_cell(foundnameindex, 7, "yes")
-                    sheet_link.update_cell(foundnameindex, 6, streakdate)
-                    await client.send_message(message.channel,"```diff\n+ Submission Successful! Score updated!\n+ {0}xp gained.\n```".format(xp_gained))
-                else:
-                    await client.send_message("```diff\n- Not a png, jpg, or gif file.\n```")
-        except:
-            pass
-    elif message.content.lower().startswith('!idinit') and message.author.name in admins:
-        print("blep")
-#TODO command to add everyone's id into the spread sheet so I don't have to do it.
     elif message.content.lower().startswith('!artblock') and message.author != message.author.server.me:
         fp = open('prompts.txt', 'r+')
         await client.send_message(message.channel, "```Markdown\n# {0}\n```".format(random.choice(fp.readlines())))
@@ -507,10 +348,10 @@ async def on_message(message):
         sheet_link = gc.open(ServerSheet).sheet1
         foundname = False
         serv = message.server
-        for sheetname in sheet_link.col_values(1):
-            if sheetname == message.author.name:
+        for sheetname in sheet_link.col_values(14):
+            if sheetname == message.author.id:
                 foundname = True
-                foundnameindex = sheet_link.col_values(1).index(sheetname)+1
+                foundnameindex = sheet_link.col_values(14).index(sheetname)+1
         if not foundname:
             await client.send_message(message.channel, "```diff\n- You need to be registered to suggest prompts.\n```")
         else:
@@ -530,6 +371,18 @@ async def on_message(message):
         if(True):
             await client.send_message(message.channel,'`{0} shakes their eight ball..`\n:8ball: `{1}`'.format(message.author.name, random.choice(eight_ball)))
         fp.close()
+    elif message.content.lower().startswith('!roll') and message.author != message.author.server.me:
+        dice = message.content.split(' ')[1]
+        try:
+            num_dice =  int(dice.split('d')[0])
+            dice_value = int(dice.split('d')[1])
+            rolls = []
+            for i in range(0,num_dice):
+                rolls.append(random.randint(1,dice_value))
+
+            await client.send_message(message.channel, ":game_die: `Your rolls are: {0}`".format(rolls))
+        except:
+            await client.send_message(message.channel, "```diff\n- Invalid dice arguments\n```")
     elif message.content.lower().startswith('!award') and message.author.name in admins:
         #awards a command, such as 8ball, to a member.
         parse = message.content.split(" ")
@@ -566,7 +419,7 @@ async def on_message(message):
         def check(msg):
             return msg.content.startswith('!')
         try:
-            working_index = sheet_link.col_values(1).index(message.author.name)+1
+            working_index = sheet_link.col_values(14).index(message.author.id)+1
             buyer_amount = int(sheet_link.cell(working_index,4).value)
             if buyer_amount >= price:
                 await client.send_message(message.channel, "```Python\n@{0}\n```\n```Markdown\n# You're about to purchase a 30 day vacation to protect your streak for 100 credits. (any new submissions will reset this to 7 days). To confirm and buy type !yes, to decline, type !no.\n```".format(message.author.name))
@@ -585,11 +438,11 @@ async def on_message(message):
     elif message.content.lower().startswith('!markraffle') and message.author.name in admins:
         try:
             gc = gspread.authorize(credentials)
-            receiver = message.mentions[0].name
+            receiver = message.mentions[0]
             sheet_link = gc.open(ServerSheet).sheet1
-            working_row = sheet_link.col_values(1).index(receiver)+1
+            working_row = sheet_link.col_values(14).index(receiver.id)+1
             sheet_link.update_cell(working_row,8,"yes")
-            await client.send_message(message.channel,"```diff\n+ Raffle submission marked for: {0}\n```".format(receiver))
+            await client.send_message(message.channel,"```diff\n+ Raffle submission marked for: {0}\n```".format(receiver.name))
         except:
             await client.send_message(message.channel,"```diff\n- Something went wrong.\n```")
     elif message.content.lower().startswith('!buy') and message.author != message.author.server.me:
@@ -601,10 +454,10 @@ async def on_message(message):
         sheet_link = gc.open(ServerSheet).sheet1
         foundname = False
         serv = message.server
-        for sheetname in sheet_link.col_values(1):
-            if sheetname == message.author.name:
+        for sheetname in sheet_link.col_values(14):
+            if sheetname == message.author.id:
                 foundname = True
-                foundnameindex = sheet_link.col_values(1).index(sheetname)+1
+                foundnameindex = sheet_link.col_values(14).index(sheetname)+1
         if not foundname:
             await client.send_message(message.channel,"```diff\n- You were not found in sheet, make sure to register before you use the shop.\n```")
         else:
