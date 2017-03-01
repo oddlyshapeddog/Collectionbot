@@ -50,11 +50,52 @@ async def on_ready():
     print(client.user.id)
     print('------')
 
+@client.event
+async def on_reaction_add(reaction, user):
+    print("reaction added")
+    print(user.name)
+    print(reaction.emoji)
+    if reaction.emoji.id == "284820985767788554" and user.id != reaction.message.author.id:
+        print("test add")
+        sheet_link = gc.open(ServerSheet).sheet1
+        submitter = reaction.message.author.id
+        foundname = False
+        foundnameindex = 0
+        for sheetname in sheet_link.col_values(14):
+            if sheetname == reaction.message.author.id:
+                foundname = True
+                foundnameindex = sheet_link.col_values(14).index(sheetname)+1
+        if foundname:
+            adorecount = int(sheet_link.cell(foundnameindex,15).value)
+            adorecount = adorecount + 1
+            sheet_link.update_cell(foundnameindex,15,adorecount)
+
+@client.event
+async def on_reaction_remove(reaction, user):
+    print("reaction removed")
+    print(user.name)
+    print(reaction.emoji)
+    if reaction.emoji.id == "284820985767788554" and user.id != reaction.message.author.id:
+        print("test remove")
+        gc = gspread.authorize(credentials)
+        sheet_link = gc.open(ServerSheet).sheet1
+        submitter = reaction.message.author.id
+        foundname = False
+        foundnameindex = 0
+        for sheetname in sheet_link.col_values(14):
+            if sheetname == reaction.message.author.id:
+                foundname = True
+                foundnameindex = sheet_link.col_values(14).index(sheetname)+1
+        if foundname:
+            adorecount = int(sheet_link.cell(foundnameindex,15).value)
+            adorecount = adorecount - 1
+            sheet_link.update_cell(foundnameindex,15,adorecount)
+
 
 @client.event
 async def on_message(message):
-    if message.content.lower().startswith('!hi') and message.author != message.author.server.me:
-        await client.send_message(message.channel, "```Markdown\nWhy, hello there!\n```")
+    if message.content.lower().startswith('f') and message.author != message.author.server.me:
+        await client.send_message(message.channel, "```Markdown\n {0} has paid their respects.\n```".format(message.author))
     elif message.content.lower().startswith('!submit') and message.author != message.author.server.me:
         if "https://" in message.content.lower() or "http://" in message.content.lower():
             # do linksubmit
@@ -168,7 +209,7 @@ async def on_message(message):
             else:
                 pass
         if not already_registered:
-            sheet_link.append_row([message.author.name,today,1,0,0,0,"no","no","none","none",0,0,0,message.author.id])
+            sheet_link.append_row([message.author.name,today,1,0,0,0,"no","no","none","none",0,0,0,message.author.id,0])
             serv = message.server
             for rank in serv.roles:
                 if rank.name == "0+ Streak":
@@ -209,7 +250,9 @@ async def on_message(message):
             streak_expiration_year = streak_expiration[2]
             submitted_today = sheet_link.cell(rownumber, 7).value
             raffle_completed = sheet_link.cell(rownumber, 8).value
+            adores = int(sheet_link.cell(rownumber,15).value)
             ##build XP card here.
+            adores_card = "```http\nAdores - {0}\n```".format(adores)
             next_level_required_xp = current_level*10+50
             xp_card = "```Markdown\n# Level: {0}   XP: {1}/{2}\n# ".format(current_level,current_xp,next_level_required_xp)
             percent = current_xp/next_level_required_xp
@@ -232,7 +275,7 @@ async def on_message(message):
                 stats_card = stats_card +"+ You have completed the raffle prompt this month.\n```"
             else:
                 stats_card = stats_card +"- You have not completed the raffle prompt this month.\n```"
-            score_card = name_card + xp_card + stats_card
+            score_card = name_card + xp_card + adores_card + stats_card
             await client.send_message(message.channel, score_card)
         else:
             await client.send_message(message.channel, "```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
