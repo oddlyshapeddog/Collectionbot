@@ -94,7 +94,7 @@ async def on_reaction_remove(reaction, user):
 
 @client.event
 async def on_message(message):
-    if message.content.lower().startswith('f') and message.author != message.author.server.me:
+    if message.content.lower() == "f" and message.author != message.author.server.me and message.channel.id == "279098440820981760":
         await client.send_message(message.channel, "```Markdown\n {0} has paid their respects.\n```".format(message.author))
     elif message.content.lower().startswith('!submit') and message.author != message.author.server.me:
         if "https://" in message.content.lower() or "http://" in message.content.lower():
