@@ -308,13 +308,13 @@ async def on_message(message):
         sheet_link = gc.open(ServerSheet).sheet1
         serv = message.server
         await client.send_message(message.channel, "```Markdown\n# Updating Roles...\n```")
-        for sheetname in sheet_link.col_values(1):
+        for id in sheet_link.col_values(14):
             try:
-                streak = int(sheet_link.cell(sheet_link.col_values(1).index(sheetname)+1,5).value)
+                streak = int(sheet_link.cell(sheet_link.col_values(1).index(id)+1,5).value)
             except:
                 streak = -1
             for person in serv.members:
-                if sheetname == person.name:
+                if id == person.id:
                     cur_member = person
                     print("testing for {0}".format(cur_member))
             if streak >= 300:
@@ -332,7 +332,7 @@ async def on_message(message):
             elif streak >= 150 and streak < 200:
                 for rank in serv.roles:
                     if rank.name == "150+ Streak":
-                        await client.add_roles(curmember, rank)
+                        await client.add_roles(cur_member, rank)
             elif streak >= 120 and streak < 150:
                 for rank in serv.roles:
                     if rank.name == "120+ Streak":
