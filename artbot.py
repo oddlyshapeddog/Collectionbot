@@ -52,9 +52,7 @@ async def on_ready():
 
 @client.event
 async def on_reaction_add(reaction, user):
-    print("reaction added")
-    print(user.name)
-    print(reaction.emoji)
+    print("reaction added " + user.name + " " + str(reaction.emoji))
     if reaction.emoji.id == "284820985767788554" and user.id != reaction.message.author.id:
         print("test add")
         submitter = reaction.message.author.id
@@ -71,11 +69,9 @@ async def on_reaction_add(reaction, user):
 
 @client.event
 async def on_reaction_remove(reaction, user):
-    print("reaction removed")
-    print(user.name)
-    print(reaction.emoji)
+    print("reaction removed " + user.name + " " + str(reaction.emoji))
     if reaction.emoji.id == "284820985767788554" and user.id != reaction.message.author.id:
-        print("test remove")
+        #print("test remove")
         submitter = reaction.message.author.id
         foundname = False
         foundnameindex = 0
@@ -98,7 +94,7 @@ async def on_message(message):
             # do linksubmit
             url = message.content.split(" ")
             curdate = datetime.date.today()
-            potentialstreak = curdate + datetime.timedelta(days=7)
+            potentialstreak = curdate + datetime.timedelta(days=8)
             today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
             streakdate = "{0}-{1}-{2}".format(potentialstreak.month, potentialstreak.day, potentialstreak.year)
             filepath = os.getcwd()+"/"+today
@@ -154,7 +150,7 @@ async def on_message(message):
             try:
                 #normal submit.
                 curdate = datetime.date.today()
-                potentialstreak = curdate + datetime.timedelta(days=7)
+                potentialstreak = curdate + datetime.timedelta(days=8)
                 today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
                 streakdate = "{0}-{1}-{2}".format(potentialstreak.month, potentialstreak.day, potentialstreak.year)
                 jsonstr = json.dumps(message.attachments[0])
@@ -341,55 +337,68 @@ async def on_message(message):
                 if streak >= 300:
                     for rank in serv.roles:
                         if rank.name == "300+ Streak":
-                            await client.add_roles(cur_member,rank)
+                            if(rank not in cur_member.roles):
+                                await client.add_roles(cur_member,rank)
                 elif streak >= 250 and streak < 300:
                     for rank in serv.roles:
                         if rank.name == "250+ Streak":
-                            await client.add_roles(cur_member,rank)
+                            if(rank not in cur_member.roles):
+                                await client.add_roles(cur_member,rank)
                 elif streak >= 200 and streak < 250:
                     for rank in serv.roles:
                         if rank.name == "200+ Streak":
-                            await client.add_roles(cur_member,rank)
+                            if(rank not in cur_member.roles):
+                                await client.add_roles(cur_member,rank)
                 elif streak >= 150 and streak < 200:
                     for rank in serv.roles:
                         if rank.name == "150+ Streak":
-                            await client.add_roles(cur_member, rank)
+                            if(rank not in cur_member.roles):
+                                await client.add_roles(cur_member,rank)
                 elif streak >= 120 and streak < 150:
                     for rank in serv.roles:
                         if rank.name == "120+ Streak":
-                            await client.add_roles(cur_member,rank)
+                            if(rank not in cur_member.roles):
+                                await client.add_roles(cur_member,rank)
                 elif streak >= 90 and streak < 120:
                     for rank in serv.roles:
                         if rank.name == "90+ Streak":
-                            await client.add_roles(cur_member,rank)
+                            if(rank not in cur_member.roles):
+                                await client.add_roles(cur_member,rank)
                 elif streak >= 60 and streak < 100:
                     for rank in serv.roles:
                         if rank.name == "60+ Streak":
-                            await client.add_roles(cur_member,rank)
+                            if(rank not in cur_member.roles):
+                                await client.add_roles(cur_member,rank)
                 elif streak >= 30 and streak < 60:
                     for rank in serv.roles:
                         if rank.name == "30+ Streak":
-                            await client.add_roles(cur_member,rank)
+                            if(rank not in cur_member.roles):
+                                await client.add_roles(cur_member,rank)
                 elif streak >= 25 and streak < 30:
                     for rank in serv.roles:
                         if rank.name == "25+ Streak":
-                            await client.add_roles(cur_member,rank)
+                            if(rank not in cur_member.roles):
+                                await client.add_roles(cur_member,rank)
                 elif streak >=20 and streak < 25:
                     for rank in serv.roles:
                         if rank.name == "20+ Streak":
-                            await client.add_roles(cur_member,rank)
+                            if(rank not in cur_member.roles):
+                                await client.add_roles(cur_member,rank)
                 elif streak >=15 and streak < 20:
                     for rank in serv.roles:
                         if rank.name == "15+ Streak":
-                            await client.add_roles(cur_member,rank)
+                            if(rank not in cur_member.roles):
+                                await client.add_roles(cur_member,rank)
                 elif streak >=10 and streak < 15:
                     for rank in serv.roles:
                         if rank.name == "10+ Streak":
-                            await client.add_roles(cur_member,rank)
+                            if(rank not in cur_member.roles):
+                                await client.add_roles(cur_member,rank)
                 elif streak >=5 and streak < 10:
                     for rank in serv.roles:
                         if rank.name == "5+ Streak":
-                            await client.add_roles(cur_member,rank)
+                            if(rank not in cur_member.roles):
+                                await client.add_roles(cur_member,rank)
         await client.send_message(message.channel, "```diff\n+ Updating roles was a happy little success!\n```")
     elif message.content.lower().startswith('!nsfwjoin') and message.author != message.author.server.me:
         serv = message.author.server
@@ -531,5 +540,15 @@ async def on_message(message):
                 sheet_link.update_cell(foundnameindex,4,new_currency)
                 await client.send_message(message.channel,"```diff\n+ Successfully payed {0} credits for {1}. Your total balance is now: {2}\n```".format(price,item_name,new_currency))
 
-				
-client.run('')
+async def background_tasks():
+    await client.wait_until_ready()
+    while not client.is_closed:
+        #refresh connection to google spreadsheet
+        print("Refreshing google spreadsheet credentials")
+        gc = gspread.authorize(credentials)
+        sheet_link = gc.open(ServerSheet).sheet1
+        await asyncio.sleep(1800) # task runs every 30 minutes		
+		
+
+client.loop.create_task(background_tasks())
+client.run(botEmail, botPassword)
