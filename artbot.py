@@ -545,9 +545,11 @@ async def background_tasks():
     while not client.is_closed:
         #refresh connection to google spreadsheet
         print("Refreshing google spreadsheet credentials")
+        global gc
         gc = gspread.authorize(credentials)
+        global sheet_link
         sheet_link = gc.open(ServerSheet).sheet1
-        await asyncio.sleep(1800) # task runs every 30 minutes		
+        await asyncio.sleep(600) # task runs every 10 minutes		
 		
 
 client.loop.create_task(background_tasks())
