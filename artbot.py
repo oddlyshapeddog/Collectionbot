@@ -141,6 +141,8 @@ async def on_message(message):
                         userCells[3].value = str(newcurrency)
                         userCells[6].value = str("yes")
                         userCells[5].value = str(streakdate)
+                        #do not update the user id
+                        del userCells[13] #remove it from the list to update
                         #and push all cells to the spreadsheet
                         sheet_link.update_cells(userCells)
                         await client.send_message(message.channel, "```diff\n+ @{0} Link Submission Successful! Score updated!\n+ {1}xp gained.```".format(message.author.name,xp_gained))
@@ -201,6 +203,8 @@ async def on_message(message):
                             userCells[3].value = str(newcurrency)
                             userCells[6].value = str("yes")
                             userCells[5].value = str(streakdate)
+                            #do not update the user id
+                            del userCells[13] #remove it from the list to update
                             #and push all cells to the spreadsheet
                             sheet_link.update_cells(userCells)
                             await client.send_message(message.channel, "```diff\n+ @{0} Link Submission Successful! Score updated!\n+ {1}xp gained.```".format(message.author.name,xp_gained))
@@ -539,6 +543,46 @@ async def on_message(message):
                 new_currency = buyer_currency - price
                 sheet_link.update_cell(foundnameindex,4,new_currency)
                 await client.send_message(message.channel,"```diff\n+ Successfully payed {0} credits for {1}. Your total balance is now: {2}\n```".format(price,item_name,new_currency))
+    elif message.content.lower().startswith("!undo") and (message.author.name in admins):
+        userid = message.content.split(" ")
+        #get user ID to roll back
+        if(len(userid) >= 2):
+            userid = userid[1]
+        else:
+            userid = "0"
+        try:
+            working_row = sheet_link.col_values(14).index(userid)+1
+        except:
+            working_row = -1
+            await client.send_message(message.channel,"```Markdown\n#Cannot find user in list```")
+        if(working_row != -1):
+            #get all stats for the user
+            userCells = sheet_link.range(working_row, 1, working_row, 13)
+            #update all the stats
+            newscore = int(userCells[11].value)-1
+            newcurrency = int(userCells[3].value)-10
+            current_streak = int(userCells[4].value)
+            current_xp = int(userCells[12].value)
+            xp_lost = 20 + int(math.floor((current_streak)/2))
+            current_level = int(userCells[2].value)
+            last_level_required_xp = (current_level-1)*10 + 50
+            new_xp_total = current_xp - xp_lost
+            #if we levelled up, increase level
+            if new_xp_total < 0:
+                current_level = current_level - 1
+                new_xp_total = last_level_required_xp + new_xp_total
+                userCells[2].value = str(current_level)
+                userCells[12].value = str(new_xp_total)
+            #otherwise just increase exp
+            else:
+                userCells[12].value = str(new_xp_total)
+            #write all new values to our cells
+            userCells[11].value = str(newscore)
+            userCells[3].value = str(newcurrency)
+            userCells[6].value = str("no")
+            #update the cells in the sheet
+            sheet_link.update_cells(userCells)
+            await client.send_message(message.channel,"```Markdown\n#Score reverted for user {0}\n```".format(userid))
 
 async def background_tasks():
     await client.wait_until_ready()
@@ -549,8 +593,8 @@ async def background_tasks():
         gc = gspread.authorize(credentials)
         global sheet_link
         sheet_link = gc.open(ServerSheet).sheet1
-        await asyncio.sleep(600) # task runs every 10 minutes		
-		
+        await asyncio.sleep(600) # task runs every 10 minutes        
+        
 
 client.loop.create_task(background_tasks())
 client.run(botEmail, botPassword)
