@@ -421,6 +421,9 @@ async def on_message(message):
                     await normalSubmit(message, userToUpdate)
                 except:
                     pass
+    elif message.content.lower().startswith("!quit") and (message.author.name in admins):
+        await client.send_message(message.channel,"Shutting down BotRoss, bye byeee~")
+        sys.exit()
 
 async def updateRoles(serv):
     ids = sheet_link.col_values(14) #get ids and streaks
