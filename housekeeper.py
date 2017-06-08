@@ -32,8 +32,9 @@ def housekeeper():
 		rowIndex = cellIndex*7
 		if(cell_list[rowIndex+6].value == "yes"):
 			#update streak score by one
-			newstreakscore = int(cell_list[rowIndex+4].value)+1
-			cell_list[rowIndex+4].value = str(newstreakscore)
+			#We no longer need to update streak, it's done in !submit now
+			#newstreakscore = int(cell_list[rowIndex+4].value)+1
+			#cell_list[rowIndex+4].value = str(newstreakscore)
 		#else if streak ends today
 		elif(cell_list[rowIndex+5].value == today):
 			#set streak to 0
