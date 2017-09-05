@@ -40,8 +40,8 @@ scope = ['https://spreadsheets.google.com/feeds']
 credentials = ServiceAccountCredentials.from_json_keyfile_name('',scope)
 
 
-gc = gspread.authorize(credentials)
-sheet_link = gc.open(ServerSheet).sheet1
+gc = 0#gspread.authorize(credentials)
+sheet_link = 0 #gc.open(ServerSheet).sheet1
 
 client = discord.Client()
 
@@ -53,11 +53,13 @@ async def on_ready():
     print('------')
     #Store the server and the bot command channel
     for s in client.servers:
+        #if s.name == 'WhatsaTestServer':
         if s.name == 'The Art Plaza Extravaganza':
             global tapeServer
             tapeServer = s
     for c in tapeServer.channels:
         if c.name == 'bot-channel':
+        #if c.name == 'botspam':
             global botChannel
             botChannel = c
     
@@ -109,6 +111,8 @@ async def on_reaction_remove(reaction, user):
 
 @client.event
 async def on_message(message):
+    global gc
+    global sheet_link
     if message.content.lower() == "f" and message.author != message.author.server.me and message.channel.id == "279098440820981760":
         await client.send_message(message.channel, "```Markdown\n {0} has paid their respects.\n```".format(message.author))
     elif message.content.lower().startswith('!submit') and message.author != message.author.server.me:
@@ -421,6 +425,11 @@ async def on_message(message):
                     await normalSubmit(message, userToUpdate)
                 except:
                     pass
+    elif message.content.lower().startswith('!reauth') and message.author.name in admins:
+        #refresh connection to google spreadsheet
+        print("Refreshing google spreadsheet credentials")
+        gspread_refresh()
+        await client.send_message(message.channel,"Refreshing database connection. Oh my, did something go wrong?")
     elif message.content.lower().startswith("!quit") and (message.author.name in admins):
         await client.send_message(message.channel,"Shutting down BotRoss, bye byeee~")
         sys.exit()
@@ -653,12 +662,18 @@ async def refresh_creds():
     await client.wait_until_ready()
     while not client.is_closed:
         #refresh connection to google spreadsheet
+        gspread_refresh()
+        await asyncio.sleep(900) # task runs every 15 minutes
+        
+        
+def gspread_refresh():
         print("Refreshing google spreadsheet credentials")
         global gc
-        gc = gspread.authorize(credentials)
         global sheet_link
+    gc = 0
+    sheet_link = 0 #reset these and reauthenticate
+    gc = gspread.authorize(credentials)
         sheet_link = gc.open(ServerSheet).sheet1
-        await asyncio.sleep(600) # task runs every 10 minutes
         
 async def roletask():
     await client.wait_until_ready()
