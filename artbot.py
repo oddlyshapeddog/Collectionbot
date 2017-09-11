@@ -74,16 +74,16 @@ async def on_reaction_add(reaction, user):
         #Change attribution of proxy submits to the mentioned user
         userToUpdate = reaction.message.mentions[0].id
     print("reaction added " + user.name + " " + str(reaction.emoji))
-    if reaction.emoji.id == "284820985767788554" and user.id != userToUpdate:
-        try:
+    try:
+        if reaction.emoji.id == "284820985767788554" and user.id != userToUpdate:
             #find user in database using id
             db_user = session.query(User).filter(User.id == userToUpdate).one()
             #increase adores by 1
             db_user.adores = db_user.adores+1
             #commit session
             session.commit()
-        except:
-            print("Adding reaction broke for user " + userToUpdate)
+    except:
+        print("Adding reaction broke for user " + userToUpdate)
 
 @client.event
 async def on_reaction_remove(reaction, user):
@@ -93,16 +93,17 @@ async def on_reaction_remove(reaction, user):
         #Change attribution of proxy submits to the mentioned user
         userToUpdate = reaction.message.mentions[0].id
     print("reaction removed " + user.name + " " + str(reaction.emoji))
-    if reaction.emoji.id == "284820985767788554" and user.id != userToUpdate:
-        try:
+    try:
+        if reaction.emoji.id == "284820985767788554" and user.id != userToUpdate:
+       
             #find user in database using id
             db_user = session.query(User).filter(User.id == userToUpdate).one()
             #increase adores by 1
             db_user.adores = db_user.adores-1
             #commit session
             session.commit()
-        except:
-            print("Adding reaction broke for user " + userToUpdate)
+    except:
+        print("Adding reaction broke for user " + userToUpdate)
 
 
 @client.event
@@ -223,6 +224,7 @@ async def on_message(message):
     elif message.content.lower().startswith('!timeleft') and message.author != message.author.server.me:
         now = datetime.datetime.now()
         end = datetime.datetime(now.year, now.month, now.day, hour=23,minute=55,second=0,microsecond=0)
+        #end = datetime.datetime(now.year, now.month, now.day, hour=14,minute=55,second=0,microsecond=0)
         difference = end - now
         seconds_to_work = difference.seconds
         difference_hours = math.floor(seconds_to_work / 3600)
@@ -556,88 +558,39 @@ async def updateRoles(serv):
                             print("updating roles for {0} with streak {1}".format(cur_member, streak))
 
 async def linkSubmit(message, userToUpdate):
-    # do linksubmit
     url = message.content.split(" ")
-    curdate = datetime.date.today()
-    potentialstreak = curdate + datetime.timedelta(days=8)
-    today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
-    streakdate = "{0}-{1}-{2}".format(potentialstreak.month, potentialstreak.day, potentialstreak.year)
-    filepath = os.getcwd()+"/"+today
-
     print('link submitting for ' + str(userToUpdate.name))
-    #try to find user in database using id
-    foundname = False
-    try:
-        db_user = session.query(User).filter(User.id == userToUpdate.id).one()
-        foundname = True
-    except sqlalchemy.orm.exc.NoResultFound:
-        print('No user found, probably not registered')
-    except sqlalchemy.orm.exc.MultipleResultsFound:
-        print('Multiple users found, something is really broken!')
-    #first find if we have  the user in our list
-
-    if not foundname:
-        await client.send_message(message.channel, "```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
-    else:
-        #db_user is our member object
-        
-        #check if already submitted
-        if db_user.submitted == 1:
-            await client.send_message(message.channel, "```diff\n- You seem to have submitted something today already!\n```")
-        #otherwise, do the submit
-        else:
-            if url[1].lower().endswith('.png') or url[1].lower().endswith('.jpg') or url[1].lower().endswith('.gif') or url[1].lower().endswith('.jpeg'):
-                if message.channel.id == channel_ids['class_2']:
-                    os.system('wget {0} -P {1}'.format(url[1], filepath))
-                #update all the stats
-                newscore = db_user.totalsubmissions+1
-                newcurrency = db_user.currency+10
-                current_streak = db_user.streak
-                new_streak = current_streak+1
-                current_xp = db_user.currentxp
-                xp_gained = 20 + int(math.floor(current_streak/2))
-                current_level = db_user.level
-                next_level_required_xp = current_level*10 + 50
-                new_xp_total = current_xp + xp_gained
-                #if we levelled up, increase level
-                if new_xp_total >= next_level_required_xp:
-                    current_level = current_level + 1
-                    new_xp_total = new_xp_total - next_level_required_xp
-                    db_user.level = str(current_level)
-                    db_user.currentxp = str(new_xp_total)
-                    await client.send_message(message.channel,"```Markdown\n# @{0} Level Up! You are now level {1}!\n```".format(userToUpdate.name,current_level))
-                #otherwise just increase exp
-                else:
-                    db_user.currentxp = str(new_xp_total)
-                #write all new values to our cells
-                db_user.totalsubmissions = newscore
-                db_user.currency = newcurrency
-                db_user.streak = new_streak
-                db_user.submitted = 1
-                db_user.expiry = potentialstreak
-                #and push all cells to the database
-                session.commit()
-                await client.send_message(message.channel, "```diff\n+ @{0} Link Submission Successful! Score updated!\n+ {1}xp gained.```".format(userToUpdate.name,xp_gained))
-            else:
-                await client.send_message(message.channel, "```diff\n- Not a png, jpg, or gif file\nMake sure image link is directly after !submit command```")
+    print(str(userToUpdate.name) + "'s url - " + url[1])
+    print('link submitting for ' + str(userToUpdate.name))
+    await handleSubmit(message, userToUpdate, url[1])
 
 async def normalSubmit(message, userToUpdate):
+    print('submitting for ' + str(userToUpdate.name))
+    jsonstr = json.dumps(message.attachments[0])
+    jsondict = json.loads(jsonstr)
+    url = jsondict['url']
+    print(str(userToUpdate.name) + "'s url - " + url)
+    
+    print('normal submitting for ' + str(userToUpdate.name))
+    await handleSubmit(message, userToUpdate, url)
+    
+
+
+     
+async def handleSubmit(message, userToUpdate, url):
     curdate = datetime.date.today()
     potentialstreak = curdate + datetime.timedelta(days=8)
     today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
     streakdate = "{0}-{1}-{2}".format(potentialstreak.month, potentialstreak.day, potentialstreak.year)
-    jsonstr = json.dumps(message.attachments[0])
-    jsondict = json.loads(jsonstr)
+    print('getting filepath to download for ' + str(userToUpdate.name))
     filepath = os.getcwd()+"/"+today
 
-    url = jsondict['url']
-    filename = jsondict['filename']
-    print('submitting for ' + str(userToUpdate.name))
     #try to find user in database using id
     foundname = False
     try:
         db_user = session.query(User).filter(User.id == userToUpdate.id).one()
         foundname = True
+        print('found user in database - ' + db_user.name)
     except sqlalchemy.orm.exc.NoResultFound:
         print('No user found, probably not registered')
     except sqlalchemy.orm.exc.MultipleResultsFound:
@@ -651,12 +604,15 @@ async def normalSubmit(message, userToUpdate):
         
         #check if already submitted
         if db_user.submitted == 1:
+            print(str(userToUpdate.name) + ' already submitted')
             await client.send_message(message.channel, "```diff\n- You seem to have submitted something today already!\n```")
         #otherwise, do the submit
         else:
-            if filename.lower().endswith('.png') or filename.lower().endswith('.jpg') or filename.lower().endswith('.gif') or filename.lower().endswith('.jpeg'):
+            if url.lower().endswith('.png') or url.lower().endswith('.jpg') or url.lower().endswith('.gif') or url.lower().endswith('.jpeg'):
                 if message.channel.id == channel_ids['class_2']:
+                    print('starting file download')
                     os.system('wget {0} -P {1}'.format(url, filepath))
+                    print('finishing file download')
                 #update all the stats
                 newscore = db_user.totalsubmissions+1
                 newcurrency = db_user.currency+10
@@ -685,15 +641,17 @@ async def normalSubmit(message, userToUpdate):
                 db_user.expiry = potentialstreak
                 #and push all cells to the database
                 session.commit()
+                print("finishing updating " + db_user.name + "'s stats")
                 await client.send_message(message.channel, "```diff\n+ @{0} Link Submission Successful! Score updated!\n+ {1}xp gained.```".format(userToUpdate.name,xp_gained))
+                print("submit complete")
             else:
                 await client.send_message(message.channel, "```diff\n- Not a png, jpg, or gif file```")
-
-        
+     
 async def roletask():
     await client.wait_until_ready()
     while not client.is_closed:
         #Do a role update
+        print("Asyncio sleeping for Roletask")
         await asyncio.sleep(10800) # task runs every 3 hours
         print("Performing Role Update")
         await client.send_message(botChannel, "```Markdown\n# Updating Roles Automatically...\n```")
