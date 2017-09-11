@@ -8,14 +8,25 @@ import os
 import random
 import sys
 
-## sheets
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
+#SQLalchemy stuff
+import sqlalchemy
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+import time
+from datetime import date, timedelta
+#declaration for User class is in here
+from create_databases import Base, User
 
 import zipfile
 
 ## modules
 
+#Bind the data type to the engine and connect to our SQL database
+engine = create_engine('sqlite:///TAPE_Database.db')
+Base.metadata.bind = engine
+DBSession = sessionmaker(bind=engine)
+#create session
+session = DBSession() #session.commit() to store data, and session.rollback() to discard changes
 
 spreadsheet_schema = {"Discord Name":1,"Start Date":2,"Level":3,"Currency":4,"Streak":5,"Streak Expires":6,"Submitted Today?":7,"Raffle Prompt Submitted":8,"Week Team":9,"Month Team":10,"Referred By":11,"Prompts Added":12,"Current XP":13}
 months = {1:"January",2:"February",3:"March",4:"April",5:"May",6:"June",7:"July",8:"August",9:"September",10:"October",11:"November",12:"December"}
@@ -27,38 +38,31 @@ channel_ids = {"class_1":"241060721994104833", "class_2":"236678008562384896"}
 tapeServer = 'no server'
 botChannel = 'no channel'
 
-### Art bot by Ciy 1.5
+### Art bot by Whatsapokemon and Ciy 2.0
 ### Simple bot for Discord designed to manage image collection.
 
 logging.basicConfig(level = logging.INFO)
 botEmail =  ""
 botPassword = ""
-ServerSheet = ""
-
-## global googlesheets setup
-scope = ['https://spreadsheets.google.com/feeds']
-credentials = ServiceAccountCredentials.from_json_keyfile_name('',scope)
-
-
-gc = gspread.authorize(credentials)
-sheet_link = gc.open(ServerSheet).sheet1
 
 client = discord.Client()
 
 @client.event
 async def on_ready():
+    global tapeServer
+    global botChannel
     print('Bot Online.')
     print(client.user.name)
     print(client.user.id)
     print('------')
     #Store the server and the bot command channel
     for s in client.servers:
+        #if s.name == 'WhatsaTestServer':
         if s.name == 'The Art Plaza Extravaganza':
-            global tapeServer
             tapeServer = s
     for c in tapeServer.channels:
         if c.name == 'bot-channel':
-            global botChannel
+        #if c.name == 'botspam':
             botChannel = c
     
 
@@ -70,19 +74,16 @@ async def on_reaction_add(reaction, user):
         #Change attribution of proxy submits to the mentioned user
         userToUpdate = reaction.message.mentions[0].id
     print("reaction added " + user.name + " " + str(reaction.emoji))
-    if reaction.emoji.id == "284820985767788554" and user.id != userToUpdate:
-        print("test add")
-        foundname = False
-        foundnameindex = 0
-        ids = sheet_link.col_values(14)
-        for sheetname in ids:
-            if sheetname == userToUpdate:
-                foundname = True
-                foundnameindex = ids.index(sheetname)+1
-        if foundname:
-            adorecount = int(sheet_link.cell(foundnameindex,15).value)
-            adorecount = adorecount + 1
-            sheet_link.update_cell(foundnameindex,15,adorecount)
+    try:
+        if reaction.emoji.id == "284820985767788554" and user.id != userToUpdate:
+            #find user in database using id
+            db_user = session.query(User).filter(User.id == userToUpdate).one()
+            #increase adores by 1
+            db_user.adores = db_user.adores+1
+            #commit session
+            session.commit()
+    except:
+        print("Adding reaction broke for user " + userToUpdate)
 
 @client.event
 async def on_reaction_remove(reaction, user):
@@ -92,19 +93,17 @@ async def on_reaction_remove(reaction, user):
         #Change attribution of proxy submits to the mentioned user
         userToUpdate = reaction.message.mentions[0].id
     print("reaction removed " + user.name + " " + str(reaction.emoji))
-    if reaction.emoji.id == "284820985767788554" and user.id != userToUpdate:
-        #print("test remove")
-        foundname = False
-        foundnameindex = 0
-        ids = sheet_link.col_values(14)
-        for sheetname in ids:
-            if sheetname == userToUpdate:
-                foundname = True
-                foundnameindex = ids.index(sheetname)+1
-        if foundname:
-            adorecount = int(sheet_link.cell(foundnameindex,15).value)
-            adorecount = adorecount - 1
-            sheet_link.update_cell(foundnameindex,15,adorecount)
+    try:
+        if reaction.emoji.id == "284820985767788554" and user.id != userToUpdate:
+       
+            #find user in database using id
+            db_user = session.query(User).filter(User.id == userToUpdate).one()
+            #increase adores by 1
+            db_user.adores = db_user.adores-1
+            #commit session
+            session.commit()
+    except:
+        print("Adding reaction broke for user " + userToUpdate)
 
 
 @client.event
@@ -125,13 +124,22 @@ async def on_message(message):
         curdate = datetime.date.today()
         today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
         already_registered = False
-        for sheetname in sheet_link.col_values(14):
-            if sheetname == message.author.id:
-                already_registered = True
-            else:
-                pass
+        #try to find user in database using id
+        try:
+            db_user = session.query(User).filter(User.id == message.author.id).one()
+            already_registered = True
+        except sqlalchemy.orm.exc.NoResultFound:
+            print('No user found, this is fine, creating new user now.')
+        except sqlalchemy.orm.exc.MultipleResultsFound:
+            print('Multiple users found, something is really broken!')
+        
+        #add a new user if there's no registered user
         if not already_registered:
-            sheet_link.append_row([message.author.name,today,1,0,0,0,"no","no","none","none",0,0,0,message.author.id,0])
+            #create new user object
+            new_user = User(name=message.author.name, level=1, id=message.author.id, startdate=curdate, currency=0, streak=0, expiry=curdate, submitted=0, raffle=0, promptsadded=0, totalsubmissions=0, currentxp=0, adores=0)
+            #add to session
+            session.add(new_user)
+            #give relevant roles
             serv = message.server
             for rank in serv.roles:
                 if rank.name == "0+ Streak":
@@ -139,6 +147,8 @@ async def on_message(message):
             for rank in serv.roles:
                 if rank.name == "Artists":
                     await client.add_roles(message.author, rank)
+            #commit session
+            session.commit()
             await client.send_message(message.channel, "```diff\n+ Successfully registered!\n```")
         else:
             await client.send_message(message.channel, "```Markdown\n# You're already registered!\n```")
@@ -146,31 +156,33 @@ async def on_message(message):
     elif message.content.lower().startswith('!help') and message.author != message.author.server.me:
         await client.send_message(message.channel,"```Markdown\n# Here's a quick little starter guide for all of you happy little artists wishing to participate.\n# !register will add you to our spreadsheet where we keep track of every submission you make\n# To submit content, drag and drop the file (.png, .gif, .jpg) into discord and add '!submit' as a comment to it.\n# If you'd like to submit via internet link, make sure you right click the image and select 'copy image location' and submit that URL using the !submit command.\n# The !timeleft command will let you know how much longer you have left to submit for the day!\n# To see your current scorecard, type !stats \n# To see your achievement status, type !ach\n# Having trouble figuring out what to draw? try !artblock for a prompt.\n# Want to add a prompt to our pool? use the !idea command to do that!\n``` \n ```diff\n - For those of our older artists, you may access the nsfw channels by typing !nsfwjoin and you can hide those channels by typing !nsfwleave. \n - When submitting nsfwcontent please use the r18 channels respectively!!\n```")
     elif message.content.lower().startswith('!stats') and message.author != message.author.server.me:
-        rownumber = 0
         foundscore = False
+        #try to find user in database using id
         try:
-            rownumber = sheet_link.col_values(14).index(message.author.id)+1
+            db_user = session.query(User).filter(User.id == message.author.id).one()
             foundscore = True
-        except:
-            foundscore = False
+        except sqlalchemy.orm.exc.NoResultFound:
+            print('No user found, probably not registered')
+        except sqlalchemy.orm.exc.MultipleResultsFound:
+            print('Multiple users found, something is really broken!')
+
+
         #if we found the user in our spreadsheet
         if foundscore == True:
-            #get all the stats for the user
-            userCells = sheet_link.range(rownumber, 1, rownumber, sheet_link.col_count)
             #then extract individual stats for simplicity
-            user_name = userCells[0].value
-            current_score = userCells[11].value
-            current_xp = int(userCells[12].value)
-            current_level = int(userCells[2].value)
-            currency_amount = userCells[3].value
-            current_streak = userCells[4].value
-            streak_expiration = userCells[5].value.split('-')
-            streak_expiration_month = months[int(streak_expiration[0])]
-            streak_expiration_day = streak_expiration[1]
+            user_name = db_user.name
+            current_score = db_user.totalsubmissions
+            current_xp = db_user.currentxp
+            current_level = db_user.level
+            currency_amount = db_user.currency
+            current_streak = db_user.streak
+            streak_expiration = db_user.expiry.strftime('%d-%m-%Y').split('-')
+            streak_expiration_month = months[int(streak_expiration[1])]
+            streak_expiration_day = streak_expiration[0]
             streak_expiration_year = streak_expiration[2]
-            submitted_today = userCells[6].value
-            raffle_completed = userCells[7].value
-            adores = userCells[14].value
+            submitted_today =  'yes' if db_user.submitted == 1 else 'no'
+            raffle_completed = 'yes' if db_user.raffle == 1 else 'no'
+            adores = db_user.adores
             ##build XP card here.
             adores_card = "```http\nAdores - {0}\n```".format(adores)
             next_level_required_xp = current_level*10+50
@@ -212,6 +224,7 @@ async def on_message(message):
     elif message.content.lower().startswith('!timeleft') and message.author != message.author.server.me:
         now = datetime.datetime.now()
         end = datetime.datetime(now.year, now.month, now.day, hour=23,minute=55,second=0,microsecond=0)
+        #end = datetime.datetime(now.year, now.month, now.day, hour=14,minute=55,second=0,microsecond=0)
         difference = end - now
         seconds_to_work = difference.seconds
         difference_hours = math.floor(seconds_to_work / 3600)
@@ -246,16 +259,21 @@ async def on_message(message):
     elif message.content.lower().startswith('!idea') and message.author != message.author.server.me:
         foundname = False
         serv = message.server
-        for sheetname in sheet_link.col_values(14):
-            if sheetname == message.author.id:
-                foundname = True
-                foundnameindex = sheet_link.col_values(14).index(sheetname)+1
+        #try to find user in database using id
+        try:
+            db_user = session.query(User).filter(User.id == message.author.id).one()
+            foundname = True
+        except sqlalchemy.orm.exc.NoResultFound:
+            print('No user found, probably not registered')
+        except sqlalchemy.orm.exc.MultipleResultsFound:
+            print('Multiple users found, something is really broken!')
+            
         if not foundname:
             await client.send_message(message.channel, "```diff\n- You need to be registered to suggest prompts.\n```")
         else:
-            newpromptscore = int(sheet_link.cell(foundnameindex,11).value) + 1
+            db_user.promptsadded = newpromptscore = db_user.promptsadded+1
+            session.commit()
             await client.send_message(message.channel, "```diff\n+ Your prompt suggestion has been recorded!\n```")
-            sheet_link.update_cell(foundnameindex,11,newpromptscore)
             if newpromptscore == 20:
                 for rank in serv.roles:
                     if rank.name == "Idea Machine":
@@ -312,33 +330,45 @@ async def on_message(message):
         potentialstreak = curdate + datetime.timedelta(days=30)
         today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
         streakdate = "{0}-{1}-{2}".format(potentialstreak.month, potentialstreak.day, potentialstreak.year)
-        def check(msg):
-            return msg.content.startswith('!')
+        #try to find user in database using id
+        foundname = False
         try:
-            working_index = sheet_link.col_values(14).index(message.author.id)+1
-            buyer_amount = int(sheet_link.cell(working_index,4).value)
+            db_user = session.query(User).filter(User.id == message.author.id).one()
+            foundname = True
+        except sqlalchemy.orm.exc.NoResultFound:
+            print('No user found, probably not registered')
+        except sqlalchemy.orm.exc.MultipleResultsFound:
+            print('Multiple users found, something is really broken!')
+        
+        if foundname:
+            def check(msg):
+                return msg.content.startswith('!')
+            buyer_amount = db_user.currency
             if buyer_amount >= price:
                 await client.send_message(message.channel, "```Python\n@{0}\n```\n```Markdown\n# You're about to purchase a 30 day vacation to protect your streak for 100 credits. (any new submissions will reset this to 7 days). To confirm and buy type !yes, to decline, type !no.\n```".format(message.author.name))
                 confirm = await client.wait_for_message(author=message.author,check=check)
                 if confirm.content.lower().startswith('!yes'):
                     new_buyer_balance = buyer_amount - price
-                    sheet_link.update_cell(working_index, 4, new_buyer_balance)
-                    sheet_link.update_cell(working_index, 6, streakdate)
+                    db_user.currency = new_buyer_balance
+                    db_user.expiry = potentialstreak
+                    session.commit()
                     await client.send_message(message.channel, "```diff\n+ Vacation purchased, your streak now expires on {0} {1}, {2}. Bon Voyage!\n```".format(months[potentialstreak.month],potentialstreak.day,potentialstreak.year))
                 elif confirm.content.lower().startswith('!no'):
                     await client.send_message(message.channel, "```Markdown\n# Transaction cancelled.\n```")
             else:
-                await client.send_message(message.channel, "```Markdown\n- Not enough credits. {0} needed, you have {1}```".format())
-        except:
+                await client.send_message(message.channel, "```Markdown\n- Not enough credits. {0} needed, you have {1}```".format(price, buyer_amount))
+        else:
             await client.send_message(message.channel, "```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
     elif message.content.lower().startswith('!markraffle') and message.author.name in admins:
         try:
+            db_user = session.query(User).filter(User.id == message.author.id).one()
             receiver = message.mentions[0]
-            working_row = sheet_link.col_values(14).index(receiver.id)+1
-            sheet_link.update_cell(working_row,8,"yes")
+            db_user.raffle = 1
+            session.commit()
             await client.send_message(message.channel,"```diff\n+ Raffle submission marked for: {0}\n```".format(receiver.name))
         except:
             await client.send_message(message.channel,"```diff\n- Something went wrong.\n```")
+            session.rollback()
     elif message.content.lower().startswith('!buy') and message.author != message.author.server.me:
         #under construction.
         parse = message.content.split(" ")
@@ -346,14 +376,20 @@ async def on_message(message):
         price = 0
         foundname = False
         serv = message.server
-        for sheetname in sheet_link.col_values(14):
-            if sheetname == message.author.id:
-                foundname = True
-                foundnameindex = sheet_link.col_values(14).index(sheetname)+1
+        #try to find user in database using id
+        try:
+            db_user = session.query(User).filter(User.id == message.author.id).one()
+            foundname = True
+        except sqlalchemy.orm.exc.NoResultFound:
+            print('No user found, probably not registered')
+        except sqlalchemy.orm.exc.MultipleResultsFound:
+            print('Multiple users found, something is really broken!')
+            
+            
         if not foundname:
             await client.send_message(message.channel,"```diff\n- You were not found in sheet, make sure to register before you use the shop.\n```")
         else:
-            buyer_currency = int(sheet_link.cell(foundnameindex,4).value)
+            buyer_currency = db_user.currency
             fp = open('shop.txt','r+')
             items_list = fp.readlines()
             for items in items_list:
@@ -364,7 +400,8 @@ async def on_message(message):
                 await client.send_message(message.channel,"```diff\n- Not enough credits. {0} needed, you have {1}\n```".format(price,buyer_currency))
             else:
                 new_currency = buyer_currency - price
-                sheet_link.update_cell(foundnameindex,4,new_currency)
+                db_user.currency = new_currency
+                session.commit()
                 await client.send_message(message.channel,"```diff\n+ Successfully payed {0} credits for {1}. Your total balance is now: {2}\n```".format(price,item_name,new_currency))
     elif message.content.lower().startswith("!undo") and (message.author.name in admins):
         userid = message.content.split(" ")
@@ -373,40 +410,44 @@ async def on_message(message):
             userid = userid[1]
         else:
             userid = "0"
+            
+        #try to find user in database using id
+        foundname = False
         try:
-            working_row = sheet_link.col_values(14).index(userid)+1
-        except:
-            working_row = -1
-            await client.send_message(message.channel,"```Markdown\n#Cannot find user in list```")
-        if(working_row != -1):
-            #get all stats for the user
-            userCells = sheet_link.range(working_row, 1, working_row, 13)
+            db_user = session.query(User).filter(User.id == message.author.id).one()
+            foundname = True
+        except sqlalchemy.orm.exc.NoResultFound:
+            print('No user found, probably not registered')
+        except sqlalchemy.orm.exc.MultipleResultsFound:
+            print('Multiple users found, something is really broken!')
+            
+        if(foundname):
             #update all the stats
-            newscore = int(userCells[11].value)-1
-            newcurrency = int(userCells[3].value)-10
-            current_streak = int(userCells[4].value)
+            newscore = db_user.totalsubmissions-1
+            newcurrency = db_user.currency-10
+            current_streak = db_user.streak
             new_streak = current_streak-1
-            current_xp = int(userCells[12].value)
+            current_xp = db_user.currentxp
             xp_lost = 20 + int(math.floor((current_streak)/2))
-            current_level = int(userCells[2].value)
+            current_level = db_user.level
             last_level_required_xp = (current_level-1)*10 + 50
             new_xp_total = current_xp - xp_lost
             #if we levelled up, increase level
             if new_xp_total < 0:
                 current_level = current_level - 1
                 new_xp_total = last_level_required_xp + new_xp_total
-                userCells[2].value = str(current_level)
-                userCells[12].value = str(new_xp_total)
+                db_user.level = current_level
+                db_user.currentxp = new_xp_total
             #otherwise just increase exp
             else:
-                userCells[12].value = str(new_xp_total)
+                db_user.currentxp = new_xp_total
             #write all new values to our cells
-            userCells[11].value = str(newscore)
-            userCells[3].value = str(newcurrency)
-            userCells[4].value = str(new_streak)
-            userCells[6].value = str("no")
+            db_user.totalsubmissions = newscore
+            db_user.currency = newcurrency
+            db_user.streak = new_streak
+            db_user.submitted = 0
             #update the cells in the sheet
-            sheet_link.update_cells(userCells)
+            session.commit()
             await client.send_message(message.channel,"```Markdown\n#Score reverted for user {0}\n```".format(userid))
     elif message.content.lower().startswith("!proxysubmit") and (message.author.name in admins):
         print('proxy submission - ' + str(len(message.mentions)))
@@ -426,22 +467,14 @@ async def on_message(message):
         sys.exit()
 
 async def updateRoles(serv):
-    ids = sheet_link.col_values(14) #get ids and streaks
-    streaks = sheet_link.col_values(5)
     #get all rows and put into memory
-    for index in range(1, len(ids)):
-        id = ids[index]
-        streak = -1
-        try:
-            #get the streak for the current member
-            streak = int(streaks[index])
-        except:
-            streak = -1
+    for curr_member in session.query(User).all():
+        streak = curr_member.streak
         cur_member = False #default value
         #if the default value is retained (we didn't find a user)
         #then do nothing. This caused the old bug
         for person in serv.members:
-            if id == person.id:
+            if curr_member.id == person.id:
                 cur_member = person
         #if we found a member, update their roles
         if(cur_member != False):
@@ -525,152 +558,106 @@ async def updateRoles(serv):
                             print("updating roles for {0} with streak {1}".format(cur_member, streak))
 
 async def linkSubmit(message, userToUpdate):
-    # do linksubmit
     url = message.content.split(" ")
+    print('link submitting for ' + str(userToUpdate.name))
+    print(str(userToUpdate.name) + "'s url - " + url[1])
+    print('link submitting for ' + str(userToUpdate.name))
+    await handleSubmit(message, userToUpdate, url[1])
+
+async def normalSubmit(message, userToUpdate):
+    print('submitting for ' + str(userToUpdate.name))
+    jsonstr = json.dumps(message.attachments[0])
+    jsondict = json.loads(jsonstr)
+    url = jsondict['url']
+    print(str(userToUpdate.name) + "'s url - " + url)
+    
+    print('normal submitting for ' + str(userToUpdate.name))
+    await handleSubmit(message, userToUpdate, url)
+    
+
+
+     
+async def handleSubmit(message, userToUpdate, url):
     curdate = datetime.date.today()
     potentialstreak = curdate + datetime.timedelta(days=8)
     today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
     streakdate = "{0}-{1}-{2}".format(potentialstreak.month, potentialstreak.day, potentialstreak.year)
+    print('getting filepath to download for ' + str(userToUpdate.name))
     filepath = os.getcwd()+"/"+today
 
+    #try to find user in database using id
+    foundname = False
+    try:
+        db_user = session.query(User).filter(User.id == userToUpdate.id).one()
+        foundname = True
+        print('found user in database - ' + db_user.name)
+    except sqlalchemy.orm.exc.NoResultFound:
+        print('No user found, probably not registered')
+    except sqlalchemy.orm.exc.MultipleResultsFound:
+        print('Multiple users found, something is really broken!')
     #first find if we have  the user in our list
-    for sheetname in sheet_link.col_values(14):
-        if sheetname == userToUpdate.id:
-            foundname = True
-            foundnameindex = sheet_link.col_values(14).index(sheetname)+1
+
     if not foundname:
         await client.send_message(message.channel, "```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
     else:
-        #get the whole row for the user
-        userCells = sheet_link.range(foundnameindex, 1, foundnameindex, sheet_link.col_count)
+        #db_user is our member object
+        
         #check if already submitted
-        if userCells[6].value == "yes":
+        if db_user.submitted == 1:
+            print(str(userToUpdate.name) + ' already submitted')
             await client.send_message(message.channel, "```diff\n- You seem to have submitted something today already!\n```")
         #otherwise, do the submit
         else:
-            if url[1].lower().endswith('.png') or url[1].lower().endswith('.jpg') or url[1].lower().endswith('.gif') or url[1].lower().endswith('.jpeg'):
+            if url.lower().endswith('.png') or url.lower().endswith('.jpg') or url.lower().endswith('.gif') or url.lower().endswith('.jpeg'):
                 if message.channel.id == channel_ids['class_2']:
-                    os.system('wget {0} -P {1}'.format(url[1], filepath))
+                    print('starting file download')
+                    os.system('wget {0} -P {1}'.format(url, filepath))
+                    print('finishing file download')
                 #update all the stats
-                newscore = int(userCells[11].value)+1
-                newcurrency = int(userCells[3].value)+10
-                current_streak = int(userCells[4].value)
+                newscore = db_user.totalsubmissions+1
+                newcurrency = db_user.currency+10
+                current_streak = db_user.streak
                 new_streak = current_streak+1
-                current_xp = int(userCells[12].value)
+                current_xp = db_user.currentxp
                 xp_gained = 20 + int(math.floor(current_streak/2))
-                current_level = int(userCells[2].value)
+                current_level = db_user.level
                 next_level_required_xp = current_level*10 + 50
                 new_xp_total = current_xp + xp_gained
                 #if we levelled up, increase level
                 if new_xp_total >= next_level_required_xp:
                     current_level = current_level + 1
                     new_xp_total = new_xp_total - next_level_required_xp
-                    userCells[2].value = str(current_level)
-                    userCells[12].value = str(new_xp_total)
+                    db_user.level = str(current_level)
+                    db_user.currentxp = str(new_xp_total)
                     await client.send_message(message.channel,"```Markdown\n# @{0} Level Up! You are now level {1}!\n```".format(userToUpdate.name,current_level))
                 #otherwise just increase exp
                 else:
-                    userCells[12].value = str(new_xp_total)
+                    db_user.currentxp = str(new_xp_total)
                 #write all new values to our cells
-                userCells[11].value = str(newscore)
-                userCells[3].value = str(newcurrency)
-                userCells[4].value = str(new_streak)
-                userCells[6].value = str("yes")
-                userCells[5].value = str(streakdate)
-                #do not update the user id
-                del userCells[13] #remove it from the list to update
-                #and push all cells to the spreadsheet
-                sheet_link.update_cells(userCells)
+                db_user.totalsubmissions = newscore
+                db_user.currency = newcurrency
+                db_user.streak = new_streak
+                db_user.submitted = 1
+                db_user.expiry = potentialstreak
+                #and push all cells to the database
+                session.commit()
+                print("finishing updating " + db_user.name + "'s stats")
                 await client.send_message(message.channel, "```diff\n+ @{0} Link Submission Successful! Score updated!\n+ {1}xp gained.```".format(userToUpdate.name,xp_gained))
+                print("submit complete")
             else:
-                await client.send_message(message.channel, "```diff\n- Not a png, jpg, or gif file\nMake sure image link is directly after !submit command```")
-
-async def normalSubmit(message, userToUpdate):
-    curdate = datetime.date.today()
-    potentialstreak = curdate + datetime.timedelta(days=8)
-    today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
-    streakdate = "{0}-{1}-{2}".format(potentialstreak.month, potentialstreak.day, potentialstreak.year)
-    jsonstr = json.dumps(message.attachments[0])
-    jsondict = json.loads(jsonstr)
-    filepath = os.getcwd()+"/"+today
-
-    url = jsondict['url']
-    filename = jsondict['filename']
-    print('submitting for ' + str(userToUpdate.name))
-    #first find if we have  the user in our list
-    for sheetname in sheet_link.col_values(14):
-        if sheetname == userToUpdate.id:
-            foundname = True
-            foundnameindex = sheet_link.col_values(14).index(sheetname)+1
-    if not foundname:
-        await client.send_message(message.channel, "```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
-    else:
-        #get the whole row for the user
-        userCells = sheet_link.range(foundnameindex, 1, foundnameindex, sheet_link.col_count)
-        #check if already submitted
-        if userCells[6].value == "yes":
-            await client.send_message(message.channel, "```diff\n- You seem to have submitted something today already!\n```")
-        #otherwise, do the submit
-        else:
-            if filename.lower().endswith('.png') or filename.lower().endswith('.jpg') or filename.lower().endswith('.gif') or filename.lower().endswith('.jpeg'):
-                if message.channel.id == channel_ids['class_2']:
-                    os.system('wget {0} -P {1}'.format(url, filepath))
-                #update all the stats
-                newscore = int(userCells[11].value)+1
-                newcurrency = int(userCells[3].value)+10
-                current_streak = int(userCells[4].value)
-                new_streak = current_streak+1
-                current_xp = int(userCells[12].value)
-                xp_gained = 20 + int(math.floor(current_streak/2))
-                current_level = int(userCells[2].value)
-                next_level_required_xp = current_level*10 + 50
-                new_xp_total = current_xp + xp_gained
-                #if we levelled up, increase level
-                if new_xp_total >= next_level_required_xp:
-                    current_level = current_level + 1
-                    new_xp_total = new_xp_total - next_level_required_xp
-                    userCells[2].value = str(current_level)
-                    userCells[12].value = str(new_xp_total)
-                    await client.send_message(message.channel, "```Markdown\n# @{0} Level Up! You are now level {1}!\n```".format(userToUpdate.name,current_level))
-                #otherwise just increase exp
-                else:
-                    userCells[12].value = str(new_xp_total)
-                #write all new values to our cells
-                userCells[11].value = str(newscore)
-                userCells[3].value = str(newcurrency)
-                userCells[4].value = str(new_streak)
-                userCells[6].value = str("yes")
-                userCells[5].value = str(streakdate)
-                #do not update the user id
-                del userCells[13] #remove it from the list to update
-                #and push all cells to the spreadsheet
-                sheet_link.update_cells(userCells)
-                await client.send_message(message.channel, "```diff\n+ @{0} Submission Successful! Score updated!\n+ {1}xp gained.```".format(userToUpdate.name,xp_gained))
-            else:
-                await client.send_message(message.channel, "```diff\n- Not a png, jpg, or gif file\n```")
-
-async def refresh_creds():
-    await client.wait_until_ready()
-    while not client.is_closed:
-        #refresh connection to google spreadsheet
-        print("Refreshing google spreadsheet credentials")
-        global gc
-        gc = gspread.authorize(credentials)
-        global sheet_link
-        sheet_link = gc.open(ServerSheet).sheet1
-        await asyncio.sleep(600) # task runs every 10 minutes
-        
+                await client.send_message(message.channel, "```diff\n- Not a png, jpg, or gif file```")
+     
 async def roletask():
     await client.wait_until_ready()
     while not client.is_closed:
         #Do a role update
+        print("Asyncio sleeping for Roletask")
         await asyncio.sleep(10800) # task runs every 3 hours
         print("Performing Role Update")
         await client.send_message(botChannel, "```Markdown\n# Updating Roles Automatically...\n```")
         await updateRoles(tapeServer)
         await client.send_message(botChannel, "```diff\n+ Updating roles was a happy little success!\n```")
         
-
-client.loop.create_task(refresh_creds())
 client.loop.create_task(roletask())
 client.run(botEmail, botPassword)
+#client.run('')

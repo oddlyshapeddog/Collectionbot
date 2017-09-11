@@ -3,48 +3,46 @@ import time
 import simplejson as json
 import datetime
 
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
+#SQLalchemy stuff
+import sqlalchemy
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+import time
+from datetime import date, timedelta
+#declaration for User class is in here
+from create_databases import Base, User
 
-## global googlesheets setup
-## housekeeper helper script for
+## housekeeper helper script for bot ross
 
-
-scope = ['https://spreadsheets.google.com/feeds']
-credentials = ServiceAccountCredentials.from_json_keyfile_name('',scope)
-ServerSheet = ""
-
+#Bind the data type to the engine and connect to our SQL database
+engine = create_engine('sqlite:///TAPE_Database.db')
+Base.metadata.bind = engine
+DBSession = sessionmaker(bind=engine)
+#create session
+session = DBSession() #session.commit() to store data, and session.rollback() to discard changes
 
 def housekeeper():
-	curdate = datetime.date.today()
-	today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
-	gc = gspread.authorize(credentials)
-	sheet_link = gc.open(ServerSheet).sheet1
-	#count rows
-	rowCount = sheet_link.row_count
-	print("Housekeeping on " + str(rowCount) + " rows on " + today)
-	#get all rows and put into memory
-	cell_list = sheet_link.range(1,1,rowCount, 7)
-	#update our saved version of the data
-	for cellIndex in range(1,rowCount):
-		# Update in batch
-		#if submitted is yes
-		rowIndex = cellIndex*7
-		if(cell_list[rowIndex+6].value == "yes"):
-			#update streak score by one
-			#We no longer need to update streak, it's done in !submit now
-			#newstreakscore = int(cell_list[rowIndex+4].value)+1
-			#cell_list[rowIndex+4].value = str(newstreakscore)
-		#else if streak ends today
-		elif(cell_list[rowIndex+5].value == today):
-			#set streak to 0
-			cell_list[rowIndex+4].value = "0"
-		#Set submitted to no
-		if(cell_list[rowIndex+6].value != "Submitted Today?"):
-			cell_list[rowIndex+6].value = "no"
-	#commit all changes to the sheet at once
-	sheet_link.update_cells(cell_list)
-	print("housekeeping finished")
+    curdate = datetime.date.today()
+    today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
+    
+    
+    #get all rows and put into memory
+    members = session.query(User).all()
+    print("Housekeeping on " + str(len(members)) + " rows on " + today)
+    
+    for curr_member in members:
+        # Update in batch
+        #if submitted is yes
+        #else if streak ends today
+        if((curdate - curr_member.expiry).days == 0):
+            #set streak to 0
+            print("setting {0}'s streak to 0".format(curr_member.name))
+            curr_member.streak = 0
+        #Set submitted to no
+        curr_member.submitted = 0
+    #commit all changes to the sheet at once
+    session.commit()
+    print("housekeeping finished")
 
 
 
