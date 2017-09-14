@@ -7,19 +7,25 @@ import math
 import os
 import random
 import sys
+import pytz
 
 #SQLalchemy stuff
 import sqlalchemy
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import time
-from datetime import date, timedelta
+from datetime import date, timedelta, time, datetime
 #declaration for User class is in here
 from create_databases import Base, User
 
+#scheduling stuff
+from pytz import utc
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
 import zipfile
 
-## modules
+##Schedluing for housekeeping
+scheduler = AsyncIOScheduler(timezone=utc)
 
 #Bind the data type to the engine and connect to our SQL database
 engine = create_engine('sqlite:///TAPE_Database.db')
@@ -75,13 +81,14 @@ async def on_reaction_add(reaction, user):
         userToUpdate = reaction.message.mentions[0].id
     print("reaction added " + user.name + " " + str(reaction.emoji))
     try:
-        if reaction.emoji.id == "284820985767788554" and user.id != userToUpdate:
-            #find user in database using id
-            db_user = session.query(User).filter(User.id == userToUpdate).one()
-            #increase adores by 1
-            db_user.adores = db_user.adores+1
-            #commit session
-            session.commit()
+        if reaction.emoji is discord.Emoji:
+            if reaction.emoji.id == "284820985767788554" and user.id != userToUpdate:
+                #find user in database using id
+                db_user = session.query(User).filter(User.id == userToUpdate).one()
+                #increase adores by 1
+                db_user.adores = db_user.adores+1
+                #commit session
+                session.commit()
     except:
         print("Adding reaction broke for user " + userToUpdate)
 
@@ -94,14 +101,15 @@ async def on_reaction_remove(reaction, user):
         userToUpdate = reaction.message.mentions[0].id
     print("reaction removed " + user.name + " " + str(reaction.emoji))
     try:
-        if reaction.emoji.id == "284820985767788554" and user.id != userToUpdate:
-       
-            #find user in database using id
-            db_user = session.query(User).filter(User.id == userToUpdate).one()
-            #increase adores by 1
-            db_user.adores = db_user.adores-1
-            #commit session
-            session.commit()
+        if reaction.emoji is discord.Emoji:
+            if reaction.emoji.id == "284820985767788554" and user.id != userToUpdate:
+           
+                #find user in database using id
+                db_user = session.query(User).filter(User.id == userToUpdate).one()
+                #increase adores by 1
+                db_user.adores = db_user.adores-1
+                #commit session
+                session.commit()
     except:
         print("Adding reaction broke for user " + userToUpdate)
 
@@ -121,7 +129,7 @@ async def on_message(message):
             except:
                 pass
     elif message.content.lower().startswith('!register') and message.author != message.author.server.me:
-        curdate = datetime.date.today()
+        curdate = datetime.date.utcnow()
         today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
         already_registered = False
         #try to find user in database using id
@@ -176,10 +184,26 @@ async def on_message(message):
             current_level = db_user.level
             currency_amount = db_user.currency
             current_streak = db_user.streak
-            streak_expiration = db_user.expiry.strftime('%d-%m-%Y').split('-')
-            streak_expiration_month = months[int(streak_expiration[1])]
-            streak_expiration_day = streak_expiration[0]
-            streak_expiration_year = streak_expiration[2]
+            #get the date of the expiry
+            #Streak expires at 7am UTC on that day
+            streak_expiration = db_user.expiry
+            streak_expiration = datetime.combine(streak_expiration, time(7,0))
+            #and get now in UTC
+            now = datetime.utcnow()
+            #then compare the difference between those times
+            delta = streak_expiration - now
+            #get time difference 
+            d_days = delta.days
+            delta = delta.seconds
+            d_sec = int(delta % 60)
+            delta = delta - d_sec
+            d_min = int((delta % 3600) / 60)
+            delta = delta - (d_min*60)
+            d_hour = int(delta / 3600)
+            
+            #streak_expiration_month = months[int(streak_expiration[1])]
+            #streak_expiration_day = streak_expiration[0]
+            #streak_expiration_year = streak_expiration[2]
             submitted_today =  'yes' if db_user.submitted == 1 else 'no'
             raffle_completed = 'yes' if db_user.raffle == 1 else 'no'
             adores = db_user.adores
@@ -198,7 +222,8 @@ async def on_message(message):
                 blips = blips - 1
             xp_card = xp_card + '\n```'
             name_card = "```Python\n@{0} - Score Card:\n```".format(user_name)
-            stats_card = "```diff\n+ Total Submissions: {0}\n+ Currency: {1}\n+ Current Streak: {2}\n- Streak Expires: {3} {4}, {5}\n".format(current_score,currency_amount,current_streak,streak_expiration_month,streak_expiration_day,streak_expiration_year)
+            #stats_card = "```diff\n+ Total Submissions: {0}\n+ Currency: {1}\n+ Current Streak: {2}\n- Streak Expires: {3} {4}, {5}\n".format(current_score,currency_amount,current_streak,streak_expiration_month,streak_expiration_day,streak_expiration_year)
+            stats_card = "```diff\n+ Total Submissions: {0}\n+ Currency: {1}\n+ Current Streak: {2}\n- Streak Expires: {3} Days, {4} Hours, {5} Minutes, {6} Seconds\n".format(current_score,currency_amount,current_streak,d_days, d_hour, d_min, d_sec)
             if submitted_today == 'yes':
                 stats_card = stats_card +"+ You have submitted today.\n"
             else:
@@ -222,9 +247,8 @@ async def on_message(message):
         ach_card = ach_card + "```"
         await client.send_message(message.channel, ach_card)
     elif message.content.lower().startswith('!timeleft') and message.author != message.author.server.me:
-        now = datetime.datetime.now()
-        end = datetime.datetime(now.year, now.month, now.day, hour=23,minute=55,second=0,microsecond=0)
-        #end = datetime.datetime(now.year, now.month, now.day, hour=14,minute=55,second=0,microsecond=0)
+        now = datetime.utcnow()
+        end = datetime(now.year, now.month, now.day, hour=7,minute=0,second=0,microsecond=0)
         difference = end - now
         seconds_to_work = difference.seconds
         difference_hours = math.floor(seconds_to_work / 3600)
@@ -326,7 +350,7 @@ async def on_message(message):
     elif message.content.lower().startswith('!vacation') and message.author != message.author.server.me:
         working_index = 0
         price = 100
-        curdate = datetime.date.today()
+        curdate = datetime.date.utcnow()
         potentialstreak = curdate + datetime.timedelta(days=30)
         today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
         streakdate = "{0}-{1}-{2}".format(potentialstreak.month, potentialstreak.day, potentialstreak.year)
@@ -462,6 +486,29 @@ async def on_message(message):
                     await normalSubmit(message, userToUpdate)
                 except:
                     pass
+    elif message.content.lower().startswith("!setstreak") and (message.author.name in admins):
+        userid = message.content.split(" ")
+        newstreak = 0
+        #get user ID to roll back
+        if(len(userid) >= 3):
+            newstreak = int(userid[2])
+            userid = userid[1]
+        else:
+            userid = "0"
+        #try to find user in database using id
+        foundname = False
+        try:
+            db_user = session.query(User).filter(User.id == userid).one()
+            foundname = True
+        except sqlalchemy.orm.exc.NoResultFound:
+            print('No user found, probably not registered')
+        except sqlalchemy.orm.exc.MultipleResultsFound:
+            print('Multiple users found, something is really broken!')
+        if(foundname):
+            #set streak to the given streak
+            db_user.streak = newstreak
+            session.commit()
+            await client.send_message(message.channel,"```Markdown\n#Streak set to {0} for user {1}\n```".format(newstreak,userid))    
     elif message.content.lower().startswith("!quit") and (message.author.name in admins):
         await client.send_message(message.channel,"Shutting down BotRoss, bye byeee~")
         sys.exit()
@@ -578,8 +625,8 @@ async def normalSubmit(message, userToUpdate):
 
      
 async def handleSubmit(message, userToUpdate, url):
-    curdate = datetime.date.today()
-    potentialstreak = curdate + datetime.timedelta(days=8)
+    curdate = datetime.utcnow()
+    potentialstreak = curdate + timedelta(days=8)
     today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
     streakdate = "{0}-{1}-{2}".format(potentialstreak.month, potentialstreak.day, potentialstreak.year)
     print('getting filepath to download for ' + str(userToUpdate.name))
@@ -609,10 +656,10 @@ async def handleSubmit(message, userToUpdate, url):
         #otherwise, do the submit
         else:
             if url.lower().endswith('.png') or url.lower().endswith('.jpg') or url.lower().endswith('.gif') or url.lower().endswith('.jpeg'):
-                if message.channel.id == channel_ids['class_2']:
-                    print('starting file download')
-                    os.system('wget {0} -P {1}'.format(url, filepath))
-                    print('finishing file download')
+                #if message.channel.id == channel_ids['class_2']:
+                    #print('starting file download')
+                    #os.system('wget {0} -P {1}'.format(url, filepath))
+                    #print('finishing file download')
                 #update all the stats
                 newscore = db_user.totalsubmissions+1
                 newcurrency = db_user.currency+10
@@ -648,16 +695,38 @@ async def handleSubmit(message, userToUpdate, url):
                 await client.send_message(message.channel, "```diff\n- Not a png, jpg, or gif file```")
      
 async def roletask():
-    await client.wait_until_ready()
-    while not client.is_closed:
-        #Do a role update
-        print("Asyncio sleeping for Roletask")
-        await asyncio.sleep(10800) # task runs every 3 hours
-        print("Performing Role Update")
-        await client.send_message(botChannel, "```Markdown\n# Updating Roles Automatically...\n```")
-        await updateRoles(tapeServer)
-        await client.send_message(botChannel, "```diff\n+ Updating roles was a happy little success!\n```")
+    #Do a role update
+    print("Performing Role Update")
+    await client.send_message(botChannel, "```Markdown\n# Updating Roles Automatically...\n```")
+    await updateRoles(tapeServer)
+    await client.send_message(botChannel, "```diff\n+ Updating roles was a happy little success!\n```")
         
-client.loop.create_task(roletask())
+async def housekeeper():
+    curdate = datetime.utcnow()
+    today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
+    
+    #get all rows and put into memory
+    members = session.query(User).all()
+    print("Housekeeping on " + str(len(members)) + " rows on " + today)
+    
+    for curr_member in members:
+        # Update in batch
+        #If we're past the streak
+        if((curdate.date() - curr_member.expiry).days >= 0 and curr_member.streak > 0):
+            pointReduce = pow(2,(curdate.date() - curr_member.expiry).days+1)
+            #reduce streak by 2^(daysPastStreak+1), until streak is zero
+            print("Removing {0} points from {1}'s streak".format(pointReduce,curr_member.name))
+            curr_member.streak = max(curr_member.streak-pointReduce,0)
+        #Set submitted to no
+        curr_member.submitted = 0
+    #commit all changes to the sheet at once
+    session.commit()
+    print("housekeeping finished")        
+
+#do role update every 3 hours
+scheduler.add_job(roletask, 'cron', hour='1,4,7,10,13,16,19,21')
+#run housekeeping at 7am UTC
+scheduler.add_job(housekeeper, 'cron', hour=7)
+scheduler.start()
 client.run(botEmail, botPassword)
 #client.run('')
