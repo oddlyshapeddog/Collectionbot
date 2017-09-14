@@ -486,6 +486,29 @@ async def on_message(message):
                     await normalSubmit(message, userToUpdate)
                 except:
                     pass
+    elif message.content.lower().startswith("!setstreak") and (message.author.name in admins):
+        userid = message.content.split(" ")
+        newstreak = 0
+        #get user ID to roll back
+        if(len(userid) >= 3):
+            newstreak = int(userid[2])
+            userid = userid[1]
+        else:
+            userid = "0"
+        #try to find user in database using id
+        foundname = False
+        try:
+            db_user = session.query(User).filter(User.id == userid).one()
+            foundname = True
+        except sqlalchemy.orm.exc.NoResultFound:
+            print('No user found, probably not registered')
+        except sqlalchemy.orm.exc.MultipleResultsFound:
+            print('Multiple users found, something is really broken!')
+        if(foundname):
+            #set streak to the given streak
+            db_user.streak = newstreak
+            session.commit()
+            await client.send_message(message.channel,"```Markdown\n#Streak set to {0} for user {1}\n```".format(newstreak,userid))    
     elif message.content.lower().startswith("!quit") and (message.author.name in admins):
         await client.send_message(message.channel,"Shutting down BotRoss, bye byeee~")
         sys.exit()
@@ -681,7 +704,7 @@ async def roletask():
 async def housekeeper():
     curdate = datetime.utcnow()
     today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
-	
+    
     #get all rows and put into memory
     members = session.query(User).all()
     print("Housekeeping on " + str(len(members)) + " rows on " + today)
