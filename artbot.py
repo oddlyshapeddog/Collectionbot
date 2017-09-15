@@ -81,7 +81,7 @@ async def on_reaction_add(reaction, user):
         userToUpdate = reaction.message.mentions[0].id
     print("reaction added " + user.name + " " + str(reaction.emoji))
     try:
-        if reaction.emoji is discord.Emoji:
+        if type(reaction.emoji) is discord.Emoji:
             if reaction.emoji.id == "284820985767788554" and user.id != userToUpdate:
                 #find user in database using id
                 db_user = session.query(User).filter(User.id == userToUpdate).one()
@@ -101,7 +101,7 @@ async def on_reaction_remove(reaction, user):
         userToUpdate = reaction.message.mentions[0].id
     print("reaction removed " + user.name + " " + str(reaction.emoji))
     try:
-        if reaction.emoji is discord.Emoji:
+        if type(reaction.emoji) is discord.Emoji:
             if reaction.emoji.id == "284820985767788554" and user.id != userToUpdate:
            
                 #find user in database using id
@@ -511,7 +511,7 @@ async def on_message(message):
             await client.send_message(message.channel,"```Markdown\n#Streak set to {0} for user {1}\n```".format(newstreak,userid))    
     elif message.content.lower().startswith("!quit") and (message.author.name in admins):
         await client.send_message(message.channel,"Shutting down BotRoss, bye byeee~")
-        sys.exit()
+        sys.exit(5)
 
 async def updateRoles(serv):
     #get all rows and put into memory
