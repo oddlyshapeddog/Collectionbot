@@ -79,10 +79,10 @@ async def on_reaction_add(reaction, user):
     if(reaction.message.content.lower().startswith('!proxysubmit')):
         #Change attribution of proxy submits to the mentioned user
         userToUpdate = reaction.message.mentions[0].id
-    print("reaction added " + user.name + " " + str(reaction.emoji))
     try:
         if type(reaction.emoji) is discord.Emoji:
-            if reaction.emoji.id == "284820985767788554" and user.id != userToUpdate:
+            if reaction.emoji.id == "284820985767788554" and user.id != userToUpdate and reaction.message.content.startswith("!submit"):
+                print("reaction added " + user.name + " " + str(reaction.emoji))
                 #find user in database using id
                 db_user = session.query(User).filter(User.id == userToUpdate).one()
                 #increase adores by 1
@@ -99,11 +99,10 @@ async def on_reaction_remove(reaction, user):
     if(reaction.message.content.lower().startswith('!proxysubmit')):
         #Change attribution of proxy submits to the mentioned user
         userToUpdate = reaction.message.mentions[0].id
-    print("reaction removed " + user.name + " " + str(reaction.emoji))
     try:
         if type(reaction.emoji) is discord.Emoji:
-            if reaction.emoji.id == "284820985767788554" and user.id != userToUpdate:
-           
+            if reaction.emoji.id == "284820985767788554" and user.id != userToUpdate and reaction.message.content.startswith("!submit"):
+                print("reaction removed " + user.name + " " + str(reaction.emoji))
                 #find user in database using id
                 db_user = session.query(User).filter(User.id == userToUpdate).one()
                 #increase adores by 1
