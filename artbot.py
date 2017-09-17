@@ -70,7 +70,7 @@ async def on_ready():
         if c.name == 'bot-channel':
         #if c.name == 'botspam':
             botChannel = c
-    
+
 
 @client.event
 async def on_reaction_add(reaction, user):
@@ -139,7 +139,7 @@ async def on_message(message):
             print('No user found, this is fine, creating new user now.')
         except sqlalchemy.orm.exc.MultipleResultsFound:
             print('Multiple users found, something is really broken!')
-        
+
         #add a new user if there's no registered user
         if not already_registered:
             #create new user object
@@ -183,6 +183,12 @@ async def on_message(message):
             current_level = db_user.level
             currency_amount = db_user.currency
             current_streak = db_user.streak
+            stats_embed = discord.Embed(title=message.author.name, description="Score Card", color=0x33cccc)
+            stats_embed.set_thumbnail(url=message.author.avatar_url)
+            stats_embed.add_field(name="Total Submissions", value=db_user.totalsubmissions,inline=True)
+            stats_embed.add_field(name="Current Streak",value=db_user.streak,inline=True)
+            stats_embed.add_field(name="Currency", value=db_user.currency,inline=True)
+
             #get the date of the expiry
             #Streak expires at 7am UTC on that day
             streak_expiration = db_user.expiry
@@ -191,7 +197,7 @@ async def on_message(message):
             now = datetime.utcnow()
             #then compare the difference between those times
             delta = streak_expiration - now
-            #get time difference 
+            #get time difference
             d_days = delta.days
             delta = delta.seconds
             d_sec = int(delta % 60)
@@ -199,40 +205,48 @@ async def on_message(message):
             d_min = int((delta % 3600) / 60)
             delta = delta - (d_min*60)
             d_hour = int(delta / 3600)
-            
+
             #streak_expiration_month = months[int(streak_expiration[1])]
             #streak_expiration_day = streak_expiration[0]
             #streak_expiration_year = streak_expiration[2]
             submitted_today =  'yes' if db_user.submitted == 1 else 'no'
             raffle_completed = 'yes' if db_user.raffle == 1 else 'no'
             adores = db_user.adores
+            stats_embed.add_field(name="Adores",value="{0}".format(adores))
             ##build XP card here.
-            adores_card = "```http\nAdores - {0}\n```".format(adores)
+            #adores_card = "```http\nAdores - {0}\n```".format(adores)
             next_level_required_xp = current_level*10+50
-            xp_card = "```Markdown\n# Level: {0}   XP: {1}/{2}\n# ".format(current_level,current_xp,next_level_required_xp)
+            #xp_card = "```Markdown\n# Level: {0}   XP: {1}/{2}\n# ".format(current_level,current_xp,next_level_required_xp)
             percent = current_xp/next_level_required_xp
+            expbar = ""
             blips = 20
             while percent > 0:
-                xp_card = xp_card + '●'
+                expbar = expbar + '●'
                 percent = percent - 0.05
                 blips = blips - 1
             while blips > 0:
-                xp_card = xp_card + '○'
+                expbar = expbar + '○'
                 blips = blips - 1
-            xp_card = xp_card + '\n```'
-            name_card = "```Python\n@{0} - Score Card:\n```".format(user_name)
+            #xp_card = xp_card + '\n```'
+            #name_card = "```Python\n@{0} - Score Card:\n```".format(user_name)
+            stats_embed.add_field(name="Level: {0}    XP: {1}/{2}".format(db_user.level,db_user.currentxp,next_level_required_xp),value=expbar,inline=True)
+            submit_status = ""
+            raffle_status = ""
+            stats_embed.add_field(name="Streaks Expires",value="{0} Days, {1} Hours, {2} Minutes, {3} Seconds.".format(d_days, d_hour, d_min, d_sec),inline=True)
             #stats_card = "```diff\n+ Total Submissions: {0}\n+ Currency: {1}\n+ Current Streak: {2}\n- Streak Expires: {3} {4}, {5}\n".format(current_score,currency_amount,current_streak,streak_expiration_month,streak_expiration_day,streak_expiration_year)
-            stats_card = "```diff\n+ Total Submissions: {0}\n+ Currency: {1}\n+ Current Streak: {2}\n- Streak Expires: {3} Days, {4} Hours, {5} Minutes, {6} Seconds\n".format(current_score,currency_amount,current_streak,d_days, d_hour, d_min, d_sec)
+            #stats_card = "```diff\n+ Total Submissions: {0}\n+ Currency: {1}\n+ Current Streak: {2}\n- Streak Expires: {3} Days, {4} Hours, {5} Minutes, {6} Seconds\n".format(current_score,currency_amount,current_streak,d_days, d_hour, d_min, d_sec)
             if submitted_today == 'yes':
-                stats_card = stats_card +"+ You have submitted today.\n"
+                submit_status = ":white_check_mark: You have submitted today"
             else:
-                stats_card = stats_card +"- You have not submitted today.\n"
+                submit_status = ":red_circle: You have not submitted today."
             if raffle_completed == 'yes':
-                stats_card = stats_card +"+ You have completed the raffle prompt this month.\n```"
+                raffle_status = ":white_check_mark: You have completed the raffle prompt this month."
             else:
-                stats_card = stats_card +"- You have not completed the raffle prompt this month.\n```"
-            score_card = name_card + xp_card + adores_card + stats_card
-            await client.send_message(message.channel, score_card)
+                raffle_status =":red_circle: You have not completed the raffle prompt this month."
+            #score_card = name_card + xp_card + adores_card + stats_card
+            stats_embed.add_field(name="Submit Status",value=submit_status,inline=True)
+            stats_embed.add_field(name="Raffle Status",value=raffle_status,inline=True)
+            await client.send_message(message.channel, embed=stats_embed)
         else:
             await client.send_message(message.channel, "```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
     elif message.content.lower().startswith('!ach') and message.author != message.author.server.me:
@@ -290,7 +304,7 @@ async def on_message(message):
             print('No user found, probably not registered')
         except sqlalchemy.orm.exc.MultipleResultsFound:
             print('Multiple users found, something is really broken!')
-            
+
         if not foundname:
             await client.send_message(message.channel, "```diff\n- You need to be registered to suggest prompts.\n```")
         else:
@@ -306,10 +320,8 @@ async def on_message(message):
             fp.write(message.content[6:]+'\n')
             fp.close()
     elif message.content.lower().startswith('!8ball') and message.author != message.author.server.me:
-        fp = open('unlocked8ball.txt', 'r+')
         if(True):
             await client.send_message(message.channel,'`{0} shakes their eight ball..`\n:8ball: `{1}`'.format(message.author.name, random.choice(eight_ball)))
-        fp.close()
     elif message.content.lower().startswith('!roll') and message.author != message.author.server.me:
         dice = message.content.split(' ')[1]
         try:
@@ -362,7 +374,7 @@ async def on_message(message):
             print('No user found, probably not registered')
         except sqlalchemy.orm.exc.MultipleResultsFound:
             print('Multiple users found, something is really broken!')
-        
+
         if foundname:
             def check(msg):
                 return msg.content.startswith('!')
@@ -407,8 +419,8 @@ async def on_message(message):
             print('No user found, probably not registered')
         except sqlalchemy.orm.exc.MultipleResultsFound:
             print('Multiple users found, something is really broken!')
-            
-            
+
+
         if not foundname:
             await client.send_message(message.channel,"```diff\n- You were not found in sheet, make sure to register before you use the shop.\n```")
         else:
@@ -433,7 +445,7 @@ async def on_message(message):
             userid = userid[1]
         else:
             userid = "0"
-            
+
         #try to find user in database using id
         foundname = False
         try:
@@ -443,7 +455,7 @@ async def on_message(message):
             print('No user found, probably not registered')
         except sqlalchemy.orm.exc.MultipleResultsFound:
             print('Multiple users found, something is really broken!')
-            
+
         if(foundname):
             #update all the stats
             newscore = db_user.totalsubmissions-1
@@ -507,10 +519,14 @@ async def on_message(message):
             #set streak to the given streak
             db_user.streak = newstreak
             session.commit()
-            await client.send_message(message.channel,"```Markdown\n#Streak set to {0} for user {1}\n```".format(newstreak,userid))    
+            await client.send_message(message.channel,"```Markdown\n#Streak set to {0} for user {1}\n```".format(newstreak,userid))
     elif message.content.lower().startswith("!quit") and (message.author.name in admins):
         await client.send_message(message.channel,"Shutting down BotRoss, bye byeee~")
         sys.exit(5)
+    elif message.content.lower().startswith("!embedtest") and (message.author.name in admins):
+        testembed.set_thumbnail(url=message.author.avatar_url)
+        testembed.add_field(name="Test_Field",value="Ciy is a butt.",inline=True)
+        await client.send_message(message.channel, embed=testembed)
 
 async def updateRoles(serv):
     #get all rows and put into memory
@@ -616,13 +632,13 @@ async def normalSubmit(message, userToUpdate):
     jsondict = json.loads(jsonstr)
     url = jsondict['url']
     print(str(userToUpdate.name) + "'s url - " + url)
-    
+
     print('normal submitting for ' + str(userToUpdate.name))
     await handleSubmit(message, userToUpdate, url)
-    
 
 
-     
+
+
 async def handleSubmit(message, userToUpdate, url):
     curdate = datetime.utcnow()
     potentialstreak = curdate + timedelta(days=8)
@@ -647,7 +663,7 @@ async def handleSubmit(message, userToUpdate, url):
         await client.send_message(message.channel, "```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
     else:
         #db_user is our member object
-        
+
         #check if already submitted
         if db_user.submitted == 1:
             print(str(userToUpdate.name) + ' already submitted')
@@ -692,22 +708,22 @@ async def handleSubmit(message, userToUpdate, url):
                 print("submit complete")
             else:
                 await client.send_message(message.channel, "```diff\n- Not a png, jpg, or gif file```")
-     
+
 async def roletask():
     #Do a role update
     print("Performing Role Update")
     await client.send_message(botChannel, "```Markdown\n# Updating Roles Automatically...\n```")
     await updateRoles(tapeServer)
     await client.send_message(botChannel, "```diff\n+ Updating roles was a happy little success!\n```")
-        
+
 async def housekeeper():
     curdate = datetime.utcnow()
     today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
-    
+
     #get all rows and put into memory
     members = session.query(User).all()
     print("Housekeeping on " + str(len(members)) + " rows on " + today)
-    
+
     for curr_member in members:
         # Update in batch
         #If we're past the streak
@@ -720,7 +736,7 @@ async def housekeeper():
         curr_member.submitted = 0
     #commit all changes to the sheet at once
     session.commit()
-    print("housekeeping finished")        
+    print("housekeeping finished")
 
 #do role update every 3 hours
 scheduler.add_job(roletask, 'cron', hour='1,4,7,10,13,16,19,21')
