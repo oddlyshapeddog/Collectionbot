@@ -128,7 +128,7 @@ async def on_message(message):
             except:
                 pass
     elif message.content.lower().startswith('!register') and message.author != message.author.server.me:
-        curdate = datetime.date.utcnow()
+        curdate = datetime.utcnow()
         today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
         already_registered = False
         #try to find user in database using id
@@ -396,8 +396,8 @@ async def on_message(message):
             await client.send_message(message.channel, "```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
     elif message.content.lower().startswith('!markraffle') and message.author.name in admins:
         try:
-            db_user = session.query(User).filter(User.id == message.author.id).one()
             receiver = message.mentions[0]
+            db_user = session.query(User).filter(User.id == receiver.id).one()
             db_user.raffle = 1
             session.commit()
             await client.send_message(message.channel,"```diff\n+ Raffle submission marked for: {0}\n```".format(receiver.name))
@@ -523,6 +523,9 @@ async def on_message(message):
     elif message.content.lower().startswith("!quit") and (message.author.name in admins):
         await client.send_message(message.channel,"Shutting down BotRoss, bye byeee~")
         sys.exit(5)
+    elif message.content.lower().startswith("!reset") and (message.author.name in admins):
+        await client.send_message(message.channel,"Resetting BotRoss (assuming Ciy and Whatsa did their job right), bye byeee~")
+        sys.exit()
     elif message.content.lower().startswith("!embedtest") and (message.author.name in admins):
         testembed.set_thumbnail(url=message.author.avatar_url)
         testembed.add_field(name="Test_Field",value="Ciy is a butt.",inline=True)
