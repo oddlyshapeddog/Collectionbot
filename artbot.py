@@ -449,7 +449,7 @@ async def on_message(message):
         #try to find user in database using id
         foundname = False
         try:
-            db_user = session.query(User).filter(User.id == message.author.id).one()
+            db_user = session.query(User).filter(User.id == userid).one()
             foundname = True
         except sqlalchemy.orm.exc.NoResultFound:
             print('No user found, probably not registered')
