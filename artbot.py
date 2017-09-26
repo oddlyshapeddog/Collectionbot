@@ -361,8 +361,8 @@ async def on_message(message):
     elif message.content.lower().startswith('!vacation') and message.author != message.author.server.me:
         working_index = 0
         price = 100
-        curdate = datetime.date.utcnow()
-        potentialstreak = curdate + datetime.timedelta(days=30)
+        curdate = datetime.utcnow()
+        potentialstreak = curdate + timedelta(days=30)
         today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
         streakdate = "{0}-{1}-{2}".format(potentialstreak.month, potentialstreak.day, potentialstreak.year)
         #try to find user in database using id
