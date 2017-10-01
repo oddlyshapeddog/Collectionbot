@@ -81,7 +81,7 @@ async def on_reaction_add(reaction, user):
         userToUpdate = reaction.message.mentions[0].id
     try:
         if type(reaction.emoji) is discord.Emoji:
-            if reaction.emoji.id == "284820985767788554" and user.id != userToUpdate and reaction.message.content.startswith("!submit"):
+            if reaction.emoji.id == "284820985767788554" and user.id != userToUpdate and (reaction.message.content.startswith("!submit") or reaction.message.content.startswith("!proxysubmit")):
                 print("reaction added " + user.name + " " + str(reaction.emoji))
                 #find user in database using id
                 db_user = session.query(User).filter(User.id == userToUpdate).one()
@@ -101,7 +101,7 @@ async def on_reaction_remove(reaction, user):
         userToUpdate = reaction.message.mentions[0].id
     try:
         if type(reaction.emoji) is discord.Emoji:
-            if reaction.emoji.id == "284820985767788554" and user.id != userToUpdate and reaction.message.content.startswith("!submit"):
+            if reaction.emoji.id == "284820985767788554" and user.id != userToUpdate and (reaction.message.content.startswith("!submit") or reaction.message.content.startswith("!proxysubmit")):
                 print("reaction removed " + user.name + " " + str(reaction.emoji))
                 #find user in database using id
                 db_user = session.query(User).filter(User.id == userToUpdate).one()
@@ -358,6 +358,18 @@ async def on_message(message):
                     await client.add_roles(person, rank)
                     achievement_receivers = achievement_receivers + " " +person.name
         await client.send_message(message.channel, "```Markdown\n# {0} awarded to {1}\n```".format(achievement_name,achievement_receivers))
+    elif message.content.lower().startswith('!ungrant') and message.author.name in admins:
+        #grants an achievement.
+        parse = message.content.split("-")
+        achievement_receivers = ""
+        achievement_name = parse[1]
+        serv = message.server
+        for rank in serv.roles:
+            if rank.name.lower() == achievement_name.lower():
+                for person in message.mentions:
+                    await client.remove_roles(person, rank)
+                    achievement_receivers = achievement_receivers + " " +person.name
+        await client.send_message(message.channel, "```Markdown\n# {0} removed from {1}\n```".format(achievement_name,achievement_receivers))
     elif message.content.lower().startswith('!vacation') and message.author != message.author.server.me:
         working_index = 0
         price = 100
@@ -401,6 +413,16 @@ async def on_message(message):
             db_user.raffle = 1
             session.commit()
             await client.send_message(message.channel,"```diff\n+ Raffle submission marked for: {0}\n```".format(receiver.name))
+        except:
+            await client.send_message(message.channel,"```diff\n- Something went wrong.\n```")
+            session.rollback()
+    elif message.content.lower().startswith('!unmarkraffle') and message.author.name in admins:
+        try:
+            receiver = message.mentions[0]
+            db_user = session.query(User).filter(User.id == receiver.id).one()
+            db_user.raffle = 0
+            session.commit()
+            await client.send_message(message.channel,"```diff\n+ Raffle submission unmarked for: {0}\n```".format(receiver.name))
         except:
             await client.send_message(message.channel,"```diff\n- Something went wrong.\n```")
             session.rollback()
@@ -483,7 +505,7 @@ async def on_message(message):
             db_user.submitted = 0
             #update the cells in the sheet
             session.commit()
-            await client.send_message(message.channel,"```Markdown\n#Score reverted for user {0}\n```".format(userid))
+            await client.send_message(message.channel,"```Markdown\n#Score reverted for user {0}\n```".format(db_user.name))
     elif message.content.lower().startswith("!proxysubmit") and (message.author.name in admins):
         print('proxy submission - ' + str(len(message.mentions)))
         if (len(message.mentions)>0):
@@ -520,107 +542,155 @@ async def on_message(message):
             db_user.streak = newstreak
             session.commit()
             await client.send_message(message.channel,"```Markdown\n#Streak set to {0} for user {1}\n```".format(newstreak,userid))
-    elif message.content.lower().startswith("!quit") and (message.author.name in admins):
+    elif message.content.lower() == "!quit" and (message.author.name in admins):
         await client.send_message(message.channel,"Shutting down BotRoss, bye byeee~")
         sys.exit(5)
-    elif message.content.lower().startswith("!reset") and (message.author.name in admins):
+    elif message.content.lower() == "!reset" and (message.author.name in admins):
         await client.send_message(message.channel,"Resetting BotRoss (assuming Ciy and Whatsa did their job right), bye byeee~")
         sys.exit()
     elif message.content.lower().startswith("!embedtest") and (message.author.name in admins):
         testembed.set_thumbnail(url=message.author.avatar_url)
         testembed.add_field(name="Test_Field",value="Ciy is a butt.",inline=True)
         await client.send_message(message.channel, embed=testembed)
+    elif message.content.lower().startswith("!getraffle") and (message.author.name in admins):
+        raffleString = "Raffle Submissions!\n==================="
+        members = session.query(User).all()
+        currRollNum = 0
+        numRaffle = 0
+        for curr_member in members:
+            if(curr_member.raffle == 1 and curr_member.streak > 0):
+                tickets = 0
+                #get number of tickets for the person
+                if(curr_member.streak >= 120):
+                    tickets = 30
+                elif(curr_member.streak >= 90):
+                    tickets = 25
+                elif(curr_member.streak >= 60):
+                    tickets = 20
+                elif(curr_member.streak >= 30):
+                    tickets = 15
+                elif(curr_member.streak >= 25):
+                    tickets = 10
+                elif(curr_member.streak >= 20):
+                    tickets = 8
+                elif(curr_member.streak >= 15):
+                    tickets = 6
+                elif(curr_member.streak >= 10):
+                    tickets = 5
+                elif(curr_member.streak >= 5):
+                    tickets = 1
+                #add the user to our raffle
+                numRaffle = numRaffle+1
+                raffleString=raffleString + "\n**{2}-{3}** = {0}, streak={1}".format(curr_member.name, str(curr_member.streak), str(currRollNum+1), str(currRollNum+tickets))
+                #add tickets to pile
+                currRollNum = currRollNum + tickets
+        await client.send_message(message.channel, raffleString)
+        await client.send_message(message.channel, "`{0} people marked for the raffle - Roll a 1d{1}`".format(str(numRaffle),str(currRollNum)))
+    elif message.content.lower().startswith("!resetraffle") and (message.author.name in admins):
+        #Reset the raffle submissions for every user
+        members = session.query(User).all()
+        numRaffle = 0
+        print("Resetting raffle on " + str(len(members)) + " members")
+        for curr_member in members:
+            #reset raffle to no
+            if(curr_member.raffle == 1):
+                numRaffle = numRaffle+1
+                curr_member.raffle = 0
+        #commit all changes to the sheet at once
+        session.commit()
+        print("raffle reset finished")
+        await client.send_message(message.channel,"Reset the raffle submissions for " + str(numRaffle) + " members")
 
 async def updateRoles(serv):
     #get all rows and put into memory
-    for curr_member in session.query(User).all():
-        streak = curr_member.streak
-        cur_member = False #default value
+    for dbUser in session.query(User).all():
+        streak = dbUser.streak
+        member = False #default value
         #if the default value is retained (we didn't find a user)
         #then do nothing. This caused the old bug
         for person in serv.members:
             if curr_member.id == person.id:
-                cur_member = person
+                member = person
         #if we found a member, update their roles
-        if(cur_member != False):
+        if(member != False):
             if streak >= 300:
                 for rank in serv.roles:
                     if rank.name == "300+ Streak":
-                        if(rank not in cur_member.roles):
-                            await client.add_roles(cur_member,rank)
-                            print("updating roles for {0} with streak {1}".format(cur_member, streak))
+                        if(rank not in member.roles):
+                            await client.add_roles(member,rank)
+                            print("updating roles for {0} with streak {1}".format(member, streak))
             elif streak >= 250 and streak < 300:
                 for rank in serv.roles:
                     if rank.name == "250+ Streak":
-                        if(rank not in cur_member.roles):
-                            await client.add_roles(cur_member,rank)
-                            print("updating roles for {0} with streak {1}".format(cur_member, streak))
+                        if(rank not in member.roles):
+                            await client.add_roles(member,rank)
+                            print("updating roles for {0} with streak {1}".format(member, streak))
             elif streak >= 200 and streak < 250:
                 for rank in serv.roles:
                     if rank.name == "200+ Streak":
-                        if(rank not in cur_member.roles):
-                            await client.add_roles(cur_member,rank)
-                            print("updating roles for {0} with streak {1}".format(cur_member, streak))
+                        if(rank not in member.roles):
+                            await client.add_roles(member,rank)
+                            print("updating roles for {0} with streak {1}".format(member, streak))
             elif streak >= 150 and streak < 200:
                 for rank in serv.roles:
                     if rank.name == "150+ Streak":
-                        if(rank not in cur_member.roles):
-                            await client.add_roles(cur_member,rank)
-                            print("updating roles for {0} with streak {1}".format(cur_member, streak))
+                        if(rank not in member.roles):
+                            await client.add_roles(member,rank)
+                            print("updating roles for {0} with streak {1}".format(member, streak))
             elif streak >= 120 and streak < 150:
                 for rank in serv.roles:
                     if rank.name == "120+ Streak":
-                        if(rank not in cur_member.roles):
-                            await client.add_roles(cur_member,rank)
-                            print("updating roles for {0} with streak {1}".format(cur_member, streak))
+                        if(rank not in member.roles):
+                            await client.add_roles(member,rank)
+                            print("updating roles for {0} with streak {1}".format(member, streak))
             elif streak >= 90 and streak < 120:
                 for rank in serv.roles:
                     if rank.name == "90+ Streak":
-                        if(rank not in cur_member.roles):
-                            await client.add_roles(cur_member,rank)
-                            print("updating roles for {0} with streak {1}".format(cur_member, streak))
+                        if(rank not in member.roles):
+                            await client.add_roles(member,rank)
+                            print("updating roles for {0} with streak {1}".format(member, streak))
             elif streak >= 60 and streak < 100:
                 for rank in serv.roles:
                     if rank.name == "60+ Streak":
-                        if(rank not in cur_member.roles):
-                            await client.add_roles(cur_member,rank)
-                            print("updating roles for {0} with streak {1}".format(cur_member, streak))
+                        if(rank not in member.roles):
+                            await client.add_roles(member,rank)
+                            print("updating roles for {0} with streak {1}".format(member, streak))
             elif streak >= 30 and streak < 60:
                 for rank in serv.roles:
                     if rank.name == "30+ Streak":
-                        if(rank not in cur_member.roles):
-                            await client.add_roles(cur_member,rank)
-                            print("updating roles for {0} with streak {1}".format(cur_member, streak))
+                        if(rank not in member.roles):
+                            await client.add_roles(member,rank)
+                            print("updating roles for {0} with streak {1}".format(member, streak))
             elif streak >= 25 and streak < 30:
                 for rank in serv.roles:
                     if rank.name == "25+ Streak":
-                        if(rank not in cur_member.roles):
-                            await client.add_roles(cur_member,rank)
-                            print("updating roles for {0} with streak {1}".format(cur_member, streak))
+                        if(rank not in member.roles):
+                            await client.add_roles(member,rank)
+                            print("updating roles for {0} with streak {1}".format(member, streak))
             elif streak >=20 and streak < 25:
                 for rank in serv.roles:
                     if rank.name == "20+ Streak":
-                        if(rank not in cur_member.roles):
-                            await client.add_roles(cur_member,rank)
-                            print("updating roles for {0} with streak {1}".format(cur_member, streak))
+                        if(rank not in member.roles):
+                            await client.add_roles(member,rank)
+                            print("updating roles for {0} with streak {1}".format(member, streak))
             elif streak >=15 and streak < 20:
                 for rank in serv.roles:
                     if rank.name == "15+ Streak":
-                        if(rank not in cur_member.roles):
-                            await client.add_roles(cur_member,rank)
-                            print("updating roles for {0} with streak {1}".format(cur_member, streak))
+                        if(rank not in member.roles):
+                            await client.add_roles(member,rank)
+                            print("updating roles for {0} with streak {1}".format(member, streak))
             elif streak >=10 and streak < 15:
                 for rank in serv.roles:
                     if rank.name == "10+ Streak":
-                        if(rank not in cur_member.roles):
-                            await client.add_roles(cur_member,rank)
-                            print("updating roles for {0} with streak {1}".format(cur_member, streak))
+                        if(rank not in member.roles):
+                            await client.add_roles(member,rank)
+                            print("updating roles for {0} with streak {1}".format(member, streak))
             elif streak >=5 and streak < 10:
                 for rank in serv.roles:
                     if rank.name == "5+ Streak":
-                        if(rank not in cur_member.roles):
-                            await client.add_roles(cur_member,rank)
-                            print("updating roles for {0} with streak {1}".format(cur_member, streak))
+                        if(rank not in member.roles):
+                            await client.add_roles(member,rank)
+                            print("updating roles for {0} with streak {1}".format(member, streak))
 
 async def linkSubmit(message, userToUpdate):
     url = message.content.split(" ")
@@ -707,7 +777,7 @@ async def handleSubmit(message, userToUpdate, url):
                 #and push all cells to the database
                 session.commit()
                 print("finishing updating " + db_user.name + "'s stats")
-                await client.send_message(message.channel, "```diff\n+ @{0} Link Submission Successful! Score updated!\n+ {1}xp gained.```".format(userToUpdate.name,xp_gained))
+                await client.send_message(message.channel, "```diff\n+ @{0} Submission Successful! Score updated!\n+ {1}xp gained.```".format(userToUpdate.name,xp_gained))
                 print("submit complete")
             else:
                 await client.send_message(message.channel, "```diff\n- Not a png, jpg, or gif file```")
