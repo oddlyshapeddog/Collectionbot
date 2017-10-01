@@ -558,7 +558,7 @@ async def on_message(message):
         currRollNum = 0
         numRaffle = 0
         for curr_member in members:
-            if(curr_member.raffle == 1 and curr_member.streak > 0):
+            if(curr_member.raffle == 1 and curr_member.streak >= 5):
                 tickets = 0
                 #get number of tickets for the person
                 if(curr_member.streak >= 120):
