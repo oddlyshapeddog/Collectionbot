@@ -37,12 +37,12 @@ session = DBSession() #session.commit() to store data, and session.rollback() to
 spreadsheet_schema = {"Discord Name":1,"Start Date":2,"Level":3,"Currency":4,"Streak":5,"Streak Expires":6,"Submitted Today?":7,"Raffle Prompt Submitted":8,"Week Team":9,"Month Team":10,"Referred By":11,"Prompts Added":12,"Current XP":13}
 months = {1:"January",2:"February",3:"March",4:"April",5:"May",6:"June",7:"July",8:"August",9:"September",10:"October",11:"November",12:"December"}
 streak_roles = ["0+ Streak","5+ Streak","10+ Streak","15+ Streak","20+ Streak","25+ Streak","30+ Streak","60+ Streak","90+ Streak","120+ Streak","150+ Streak","200+ Streak","250+ Streak","300+ Streak","Admins","Raffle","Community Admins","Type !help for info","@everyone","NSFW Artist", "Artists", "Head Admins"]
-admins = ["Ciy","DShou","SilviaWindmane","Fluttair|Thunderbolt","Mal Winters","kawaiipony","aFluffyGuy","Skye","~ <3","Scruffasus","Whatsapokemon"]
 eight_ball = ["It is certain.","It is decidedly so.","Without a doubt.","Yes, definitely.","You may rely on it.","As I see it, yes.","Most likely.","Outlook good.","Yes.","Signs point to yes.","Reply hazy try again.","Ask again later.","Better not tell you now.","Cannot predict now.","Concentrate and ask again.","Don't count on it.","My reply is no.","My sources say no.","Outlook not so good.","Very doubtful."]
 
 channel_ids = {"class_1":"241060721994104833", "class_2":"236678008562384896"}
 tapeServer = 'no server'
 botChannel = 'no channel'
+adminRole = 'no role'
 
 ### Art bot by Whatsapokemon and Ciy 2.0
 ### Simple bot for Discord designed to manage image collection.
@@ -57,6 +57,7 @@ client = discord.Client()
 async def on_ready():
     global tapeServer
     global botChannel
+    global adminRole
     print('Bot Online.')
     print(client.user.name)
     print(client.user.id)
@@ -70,6 +71,10 @@ async def on_ready():
         if c.name == 'bot-channel':
         #if c.name == 'botspam':
             botChannel = c
+    #admin role, admin actions require at least this role (or any with higher priority)
+    for r in tapeServer.roles:
+        if r.name == 'Admins':
+            adminRole = r
 
 
 @client.event
@@ -273,7 +278,7 @@ async def on_message(message):
         else:
             await client.send_message(message.channel, '```diff\n+ {0} hours, {1} minutes, and {2} seconds left to submit for today!\n```'.format(difference_hours,difference_minutes,seconds_to_work))
 
-    elif message.content.lower().startswith('!roleupdate') and (message.author.name in admins):
+    elif message.content.lower().startswith('!roleupdate') and (message.author.top_role >= adminRole):
         await client.send_message(message.channel, "```Markdown\n# Updating Roles...\n```")
         await updateRoles(message.server)
         await client.send_message(message.channel, "```diff\n+ Updating roles was a happy little success!\n```")
@@ -334,7 +339,7 @@ async def on_message(message):
             await client.send_message(message.channel, ":game_die: `Your rolls are: {0}`".format(rolls))
         except:
             await client.send_message(message.channel, "```diff\n- Invalid dice arguments\n```")
-    elif message.content.lower().startswith('!award') and message.author.name in admins:
+    elif message.content.lower().startswith('!award') and message.author.top_role >= adminRole:
         #awards a command, such as 8ball, to a member.
         parse = message.content.split(" ")
         members_awarded = ""
@@ -346,7 +351,7 @@ async def on_message(message):
                 members_awarded = members_awarded +" "+receiver.name
             fp.close()
         await client.send_message(message.channel, "```Markdown\n# !{0} awarded to {1}```".format(reward, members_awarded))
-    elif message.content.lower().startswith('!grant') and message.author.name in admins:
+    elif message.content.lower().startswith('!grant') and message.author.top_role >= adminRole:
         #grants an achievement.
         parse = message.content.split("-")
         achievement_receivers = ""
@@ -358,7 +363,7 @@ async def on_message(message):
                     await client.add_roles(person, rank)
                     achievement_receivers = achievement_receivers + " " +person.name
         await client.send_message(message.channel, "```Markdown\n# {0} awarded to {1}\n```".format(achievement_name,achievement_receivers))
-    elif message.content.lower().startswith('!ungrant') and message.author.name in admins:
+    elif message.content.lower().startswith('!ungrant') and message.author.top_role >= adminRole:
         #grants an achievement.
         parse = message.content.split("-")
         achievement_receivers = ""
@@ -388,25 +393,26 @@ async def on_message(message):
             print('Multiple users found, something is really broken!')
 
         if foundname:
-            def check(msg):
-                return msg.content.startswith('!')
             buyer_amount = db_user.currency
             if buyer_amount >= price:
                 await client.send_message(message.channel, "```Python\n@{0}\n```\n```Markdown\n# You're about to purchase a 30 day vacation to protect your streak for 100 credits. (any new submissions will reset this to 7 days). To confirm and buy type !yes, to decline, type !no.\n```".format(message.author.name))
-                confirm = await client.wait_for_message(author=message.author,check=check)
-                if confirm.content.lower().startswith('!yes'):
-                    new_buyer_balance = buyer_amount - price
-                    db_user.currency = new_buyer_balance
-                    db_user.expiry = potentialstreak
-                    session.commit()
-                    await client.send_message(message.channel, "```diff\n+ Vacation purchased, your streak now expires on {0} {1}, {2}. Bon Voyage!\n```".format(months[potentialstreak.month],potentialstreak.day,potentialstreak.year))
-                elif confirm.content.lower().startswith('!no'):
-                    await client.send_message(message.channel, "```Markdown\n# Transaction cancelled.\n```")
+                try:
+                    confirm = await confirmDecision(message.author)
+                    if confirm:
+                        new_buyer_balance = buyer_amount - price
+                        db_user.currency = new_buyer_balance
+                        db_user.expiry = potentialstreak
+                        session.commit()
+                        await client.send_message(message.channel, "```diff\n+ Vacation purchased, your streak now expires on {0} {1}, {2}. Bon Voyage!\n```".format(months[potentialstreak.month],potentialstreak.day,potentialstreak.year))
+                    else:
+                        await client.send_message(message.channel, "```Markdown\n# Transaction cancelled.\n```")
+                except:
+                    print("transaction with {0} timed out".format(message.author.name))
             else:
                 await client.send_message(message.channel, "```Markdown\n- Not enough credits. {0} needed, you have {1}```".format(price, buyer_amount))
         else:
             await client.send_message(message.channel, "```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
-    elif message.content.lower().startswith('!markraffle') and message.author.name in admins:
+    elif message.content.lower().startswith('!markraffle') and message.author.top_role >= adminRole:
         try:
             receiver = message.mentions[0]
             db_user = session.query(User).filter(User.id == receiver.id).one()
@@ -416,7 +422,7 @@ async def on_message(message):
         except:
             await client.send_message(message.channel,"```diff\n- Something went wrong.\n```")
             session.rollback()
-    elif message.content.lower().startswith('!unmarkraffle') and message.author.name in admins:
+    elif message.content.lower().startswith('!unmarkraffle') and message.author.top_role >= adminRole:
         try:
             receiver = message.mentions[0]
             db_user = session.query(User).filter(User.id == receiver.id).one()
@@ -460,7 +466,7 @@ async def on_message(message):
                 db_user.currency = new_currency
                 session.commit()
                 await client.send_message(message.channel,"```diff\n+ Successfully payed {0} credits for {1}. Your total balance is now: {2}\n```".format(price,item_name,new_currency))
-    elif message.content.lower().startswith("!undo") and (message.author.name in admins):
+    elif message.content.lower().startswith("!undo") and (message.author.top_role >= adminRole):
         userid = message.content.split(" ")
         #get user ID to roll back
         if(len(userid) >= 2):
@@ -506,7 +512,7 @@ async def on_message(message):
             #update the cells in the sheet
             session.commit()
             await client.send_message(message.channel,"```Markdown\n#Score reverted for user {0}\n```".format(db_user.name))
-    elif message.content.lower().startswith("!proxysubmit") and (message.author.name in admins):
+    elif message.content.lower().startswith("!proxysubmit") and (message.author.top_role >= adminRole):
         print('proxy submission - ' + str(len(message.mentions)))
         if (len(message.mentions)>0):
             userToUpdate = message.mentions[0]
@@ -519,7 +525,7 @@ async def on_message(message):
                     await normalSubmit(message, userToUpdate)
                 except:
                     pass
-    elif message.content.lower().startswith("!setstreak") and (message.author.name in admins):
+    elif message.content.lower().startswith("!setstreak") and (message.author.top_role >= adminRole):
         userid = message.content.split(" ")
         newstreak = 0
         #get user ID to roll back
@@ -542,17 +548,17 @@ async def on_message(message):
             db_user.streak = newstreak
             session.commit()
             await client.send_message(message.channel,"```Markdown\n#Streak set to {0} for user {1}\n```".format(newstreak,userid))
-    elif message.content.lower() == "!quit" and (message.author.name in admins):
+    elif message.content.lower() == "!quit" and (message.author.top_role >= adminRole):
         await client.send_message(message.channel,"Shutting down BotRoss, bye byeee~")
         sys.exit(5)
-    elif message.content.lower() == "!reset" and (message.author.name in admins):
+    elif message.content.lower() == "!reset" and (message.author.top_role >= adminRole):
         await client.send_message(message.channel,"Resetting BotRoss (assuming Ciy and Whatsa did their job right), bye byeee~")
         sys.exit()
-    elif message.content.lower().startswith("!embedtest") and (message.author.name in admins):
+    elif message.content.lower().startswith("!embedtest") and (message.author.top_role >= adminRole):
         testembed.set_thumbnail(url=message.author.avatar_url)
         testembed.add_field(name="Test_Field",value="Ciy is a butt.",inline=True)
         await client.send_message(message.channel, embed=testembed)
-    elif message.content.lower().startswith("!getraffle") and (message.author.name in admins):
+    elif message.content.lower().startswith("!getraffle") and (message.author.top_role >= adminRole):
         raffleString = "Raffle Submissions!\n==================="
         members = session.query(User).all()
         currRollNum = 0
@@ -586,20 +592,28 @@ async def on_message(message):
                 currRollNum = currRollNum + tickets
         await client.send_message(message.channel, raffleString)
         await client.send_message(message.channel, "`{0} people marked for the raffle - Roll a 1d{1}`".format(str(numRaffle),str(currRollNum)))
-    elif message.content.lower().startswith("!resetraffle") and (message.author.name in admins):
-        #Reset the raffle submissions for every user
-        members = session.query(User).all()
-        numRaffle = 0
-        print("Resetting raffle on " + str(len(members)) + " members")
-        for curr_member in members:
-            #reset raffle to no
-            if(curr_member.raffle == 1):
-                numRaffle = numRaffle+1
-                curr_member.raffle = 0
-        #commit all changes to the sheet at once
-        session.commit()
-        print("raffle reset finished")
-        await client.send_message(message.channel,"Reset the raffle submissions for " + str(numRaffle) + " members")
+    elif message.content.lower().startswith("!resetraffle") and (message.author.top_role >= adminRole):
+        await client.send_message(message.channel,"This command will reset raffle marks for all members. Type !yes to confirm, or !no to cancel.")
+        confirm = await confirmDecision(message.author)
+        try:
+            if(confirm):
+                #Reset the raffle submissions for every user
+                members = session.query(User).all()
+                numRaffle = 0
+                print("Resetting raffle on " + str(len(members)) + " members")
+                for curr_member in members:
+                    #reset raffle to no
+                    if(curr_member.raffle == 1):
+                        numRaffle = numRaffle+1
+                        curr_member.raffle = 0
+                #commit all changes to the sheet at once
+                session.commit()
+                print("raffle reset finished")
+                await client.send_message(message.channel,"Reset the raffle submissions for " + str(numRaffle) + " members")
+            else:
+                await client.send_message(message.channel,"Cancelling raffle reset, phew.")
+        except:
+            print("Raffle Reset timed out")
 
 async def updateRoles(serv):
     #get all rows and put into memory
@@ -609,7 +623,7 @@ async def updateRoles(serv):
         #if the default value is retained (we didn't find a user)
         #then do nothing. This caused the old bug
         for person in serv.members:
-            if curr_member.id == person.id:
+            if dbUser.id == person.id:
                 member = person
         #if we found a member, update their roles
         if(member != False):
@@ -811,6 +825,15 @@ async def housekeeper():
     session.commit()
     print("housekeeping finished")
 
+async def confirmDecision(user):
+    def check(msg):
+        return msg.content.startswith('!')
+    confirm = await client.wait_for_message(timeout=180, author=user,check=check)
+    if confirm.content.lower().startswith('!yes'):
+        return True
+    elif confirm.content.lower().startswith('!no'):
+        return False
+    
 #do role update every 3 hours
 scheduler.add_job(roletask, 'cron', hour='1,4,7,10,13,16,19,21')
 #run housekeeping at 7am UTC
