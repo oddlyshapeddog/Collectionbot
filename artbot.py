@@ -53,6 +53,19 @@ botPassword = ""
 
 client = discord.Client()
 
+###LIVE/DEBUG SETTINGS####
+live = True
+if(live):
+    serverName = 'The Art Plaza Extravaganza'
+    botChannelName = 'bot-channel'
+    submitChannels = ['236678008562384896', '302915168801783810', '241060721994104833', '313945720447303680']
+else:
+    serverName = 'WhatsaTestServer'
+    botChannelName = 'botspam'
+    submitChannels = ['271516310314156042','284618270659575818']
+##########################
+    
+
 @client.event
 async def on_ready():
     global tapeServer
@@ -64,12 +77,10 @@ async def on_ready():
     print('------')
     #Store the server and the bot command channel
     for s in client.servers:
-        #if s.name == 'WhatsaTestServer':
-        if s.name == 'The Art Plaza Extravaganza':
+        if s.name == serverName:
             tapeServer = s
     for c in tapeServer.channels:
-        if c.name == 'bot-channel':
-        #if c.name == 'botspam':
+        if c.name == botChannelName:
             botChannel = c
     #admin role, admin actions require at least this role (or any with higher priority)
     for r in tapeServer.roles:
@@ -123,15 +134,18 @@ async def on_message(message):
     if message.content.lower() == "f" and message.author != message.author.server.me and message.channel.id == "279098440820981760":
         await client.send_message(message.channel, "```Markdown\n {0} has paid their respects.\n```".format(message.author))
     elif message.content.lower().startswith('!submit') and message.author != message.author.server.me:
-        if "https://" in message.content.lower() or "http://" in message.content.lower():
-            # do linksubmit
-            await linkSubmit(message, message.author)
+        if (message.channel.id in submitChannels):
+            if "https://" in message.content.lower() or "http://" in message.content.lower():
+                # do linksubmit
+                await linkSubmit(message, message.author)
+            else:
+                try:
+                    #normal submit.
+                    await normalSubmit(message, message.author)
+                except:
+                    pass
         else:
-            try:
-                #normal submit.
-                await normalSubmit(message, message.author)
-            except:
-                pass
+            await client.send_message(message.channel, "`Whoopsies, you can't submit in this channel!`")
     elif message.content.lower().startswith('!register') and message.author != message.author.server.me:
         curdate = datetime.utcnow()
         today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
@@ -839,5 +853,7 @@ scheduler.add_job(roletask, 'cron', hour='1,4,7,10,13,16,19,21')
 #run housekeeping at 7am UTC
 scheduler.add_job(housekeeper, 'cron', hour=7)
 scheduler.start()
-client.run(botEmail, botPassword)
-#client.run('')
+if(live):
+    client.run(botEmail, botPassword)
+else:
+    client.run('')
