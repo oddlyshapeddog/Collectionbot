@@ -529,10 +529,13 @@ async def on_message(message):
     elif message.content.lower().startswith("!undo") and (message.author.top_role >= adminRole):
         userid = message.content.split(" ")
         #get user ID to roll back
-        if(len(userid) >= 2):
-            userid = userid[1]
+        if (len(message.mentions)>0):
+            userid = message.mentions[0].id
         else:
-            userid = "0"
+            if(len(userid) >= 2):
+                userid = userid[1]
+            else:
+                userid = "0"
 
         #try to find user in database using id
         foundname = False
@@ -589,11 +592,15 @@ async def on_message(message):
         userid = message.content.split(" ")
         newstreak = 0
         #get user ID to roll back
-        if(len(userid) >= 3):
+        if (len(message.mentions)>0):
             newstreak = int(userid[2])
-            userid = userid[1]
+            userid = message.mentions[0].id
         else:
-            userid = "0"
+            if(len(userid) >= 3):
+                newstreak = int(userid[2])
+                userid = userid[1]
+            else:
+                userid = "0"
         #try to find user in database using id
         foundname = False
         try:
@@ -612,11 +619,16 @@ async def on_message(message):
         userid = message.content.split(" ")
         newhighscore = 0
         #get user ID to roll back
-        if(len(userid) >= 3):
+        if (len(message.mentions)>0):
+            print(userid)
             newhighscore = int(userid[2])
-            userid = userid[1]
+            userid = message.mentions[0].id
         else:
-            userid = "0"
+            if(len(userid) >= 3):
+                newhighscore = int(userid[2])
+                userid = userid[1]
+            else:
+                userid = "0"
         #try to find user in database using id
         foundname = False
         try:
