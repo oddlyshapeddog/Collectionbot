@@ -607,7 +607,7 @@ async def on_message(message):
             #set streak to the given streak
             db_user.streak = newstreak
             session.commit()
-            await client.send_message(message.channel,"```Markdown\n#Streak set to {0} for user {1}\n```".format(newstreak,userid))
+            await client.send_message(message.channel,"```Markdown\n#Streak set to {0} for user {1}\n```".format(newstreak,db_user.name))
     elif message.content.lower().startswith("!sethighscore") and (message.author.top_role >= adminRole):
         userid = message.content.split(" ")
         newhighscore = 0
@@ -630,7 +630,7 @@ async def on_message(message):
             #set streak to the given streak
             db_user.highscore = newhighscore
             session.commit()
-            await client.send_message(message.channel,"```Markdown\n#Streak high score set to {0} for user {1}\n```".format(newhighscore,userid))
+            await client.send_message(message.channel,"```Markdown\n#Streak high score set to {0} for user {1}\n```".format(newhighscore,db_user.name))
     elif message.content.lower() == "!quit" and (message.author.top_role >= adminRole):
         await client.send_message(message.channel,"Shutting down BotRoss, bye byeee~")
         sys.exit(5)
