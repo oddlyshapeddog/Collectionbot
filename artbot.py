@@ -608,6 +608,29 @@ async def on_message(message):
             db_user.streak = newstreak
             session.commit()
             await client.send_message(message.channel,"```Markdown\n#Streak set to {0} for user {1}\n```".format(newstreak,userid))
+    elif message.content.lower().startswith("!sethighscore") and (message.author.top_role >= adminRole):
+        userid = message.content.split(" ")
+        newhighscore = 0
+        #get user ID to roll back
+        if(len(userid) >= 3):
+            newhighscore = int(userid[2])
+            userid = userid[1]
+        else:
+            userid = "0"
+        #try to find user in database using id
+        foundname = False
+        try:
+            db_user = session.query(User).filter(User.id == userid).one()
+            foundname = True
+        except sqlalchemy.orm.exc.NoResultFound:
+            print('No user found, probably not registered')
+        except sqlalchemy.orm.exc.MultipleResultsFound:
+            print('Multiple users found, something is really broken!')
+        if(foundname):
+            #set streak to the given streak
+            db_user.highscore = newhighscore
+            session.commit()
+            await client.send_message(message.channel,"```Markdown\n#Streak high score set to {0} for user {1}\n```".format(newhighscore,userid))
     elif message.content.lower() == "!quit" and (message.author.top_role >= adminRole):
         await client.send_message(message.channel,"Shutting down BotRoss, bye byeee~")
         sys.exit(5)
