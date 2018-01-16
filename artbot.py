@@ -732,7 +732,8 @@ async def updateRoles(serv):
                 otherRoles.remove(streakRank)
             print(otherRoles)
             #remove the roles they shouldn't have
-            await client.remove_roles(member, *otherRoles)
+            if(len(otherRoles) > 1):
+                await client.remove_roles(member, *otherRoles)
 
 async def linkSubmit(message, userToUpdate):
     url = message.content.split(" ")
