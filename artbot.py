@@ -180,7 +180,7 @@ async def on_message(message):
             await client.send_message(message.channel, "```Markdown\n# You're already registered!\n```")
 
     elif message.content.lower().startswith('!help') and message.author != message.author.server.me:
-        await client.send_message(message.channel,"```Markdown\n# Here's a quick little starter guide for all of you happy little artists wishing to participate.\n# !register will add you to our spreadsheet where we keep track of every submission you make\n# To submit content, drag and drop the file (.png, .gif, .jpg) into discord and add '!submit' as a comment to it.\n# If you'd like to submit via internet link, make sure you right click the image and select 'copy image location' and submit that URL using the !submit command.\n# The !timeleft command will let you know how much longer you have left to submit for the day!\n# To see your current scorecard, type !stats \n# To see your achievement status, type !ach\n# Having trouble figuring out what to draw? try !artblock for a prompt.\n# Want to add a prompt to our pool? use the !idea command to do that!\n``` \n ```diff\n - For those of our older artists, you may access the nsfw channels by typing !nsfwjoin and you can hide those channels by typing !nsfwleave. \n - When submitting nsfwcontent please use the r18 channels respectively!!\n```")
+        await client.send_message(message.channel,"```Markdown\n# Here's a quick little starter guide for all of you happy little artists wishing to participate.\n# !register will add you to our spreadsheet where we keep track of every submission you make\n# To submit content, drag and drop the file (.png, .gif, .jpg) into discord and add '!submit' as a comment to it.\n# If you'd like to submit via internet link, make sure you right click the image and select 'copy image location' and submit that URL using the !submit command.\n# The !timeleft command will let you know how much longer you have left to submit for the day!\n# To see your current scorecard, type !stats \n# To see your achievement status, type !ach\n# Having trouble figuring out what to draw? Override your role colour using !override <Role Number>\n``` \n ```diff\n - For those of our older artists, you may access the nsfw channels by typing !nsfwjoin and you can hide those channels by typing !nsfwleave. \n - When submitting nsfwcontent please use the r18 channels respectively!!\n```")
     elif message.content.lower().startswith('!stats') and message.author != message.author.server.me:
         foundscore = False
         #try to find user in database using id
@@ -206,6 +206,7 @@ async def on_message(message):
             stats_embed.set_thumbnail(url=message.author.avatar_url)
             stats_embed.add_field(name="Total Submissions", value=db_user.totalsubmissions,inline=True)
             stats_embed.add_field(name="Current Streak",value=db_user.streak,inline=True)
+			stats_embed.add_field(name="Streak High Score",value=db_user.highscore,inline=True)
             stats_embed.add_field(name="Currency", value=db_user.currency,inline=True)
 
             #get the date of the expiry
