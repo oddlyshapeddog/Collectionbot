@@ -206,7 +206,7 @@ async def on_message(message):
             stats_embed.set_thumbnail(url=message.author.avatar_url)
             stats_embed.add_field(name="Total Submissions", value=db_user.totalsubmissions,inline=True)
             stats_embed.add_field(name="Current Streak",value=db_user.streak,inline=True)
-			stats_embed.add_field(name="Streak High Score",value=db_user.highscore,inline=True)
+            stats_embed.add_field(name="Streak High Score",value=db_user.highscore,inline=True)
             stats_embed.add_field(name="Currency", value=db_user.currency,inline=True)
 
             #get the date of the expiry
@@ -504,18 +504,25 @@ async def on_message(message):
             
             role = discord.utils.get(message.server.roles, name=roleName)
             if(override_string.lower() == "none" or role != None):
-                #remove other overrides from user
+                #get override roles to remove
                 orRoles = [r for r in message.author.roles if r.name.startswith("Override")]
-                print(orRoles)
-                await client.remove_roles(message.author, *orRoles)
                 
                 if(override_string.lower() == "none"):
+                    #remove old roles
+                    await client.remove_roles(message.author, *orRoles)
                     await client.send_message(message.channel,"```diff\n+Your Override has successfully been removed```")
                 #check if high score allows it
                 elif( int(override_string) <= db_user.highscore):
-                    #add new override to user
-                    await client.add_roles(message.author, role)
-                    await client.send_message(message.channel,"```diff\n+You have successfully been granted the " + override_string + " Override role```")
+                    #Now do the purchase code 
+                    purchase = await buyitem("Role Override Streak ({0})".format(override_string), 100, message.author, message.channel)
+                    if(purchase):
+                        #remove old roles
+                        print(orRoles)
+                        await client.remove_roles(message.author, *orRoles)
+                        #add new override to user
+                        print(role)
+                        await client.add_roles(message.author, role)
+                        await client.send_message(message.channel,"```diff\n+You have successfully been granted the " + override_string + " Override role```")
                 elif( int(override_string) > db_user.highscore):
                     await client.send_message(message.channel,"```diff\n-Your Streak high score is not high enough to use that override```")
 
@@ -857,6 +864,40 @@ async def confirmDecision(user):
         return True
     elif confirm.content.lower().startswith('!no'):
         return False
+    
+    
+async def buyitem(itemName, price, author, channel):
+    foundname = False
+    boughtItem = False
+    try:
+        db_user = session.query(User).filter(User.id == author.id).one()
+        foundname = True
+    except sqlalchemy.orm.exc.NoResultFound:
+        print('No user found, probably not registered')
+    except sqlalchemy.orm.exc.MultipleResultsFound:
+        print('Multiple users found, something is really broken!')
+        
+    if foundname:
+        buyer_amount = db_user.currency
+        if buyer_amount >= price:
+            await client.send_message(channel, "```Python\n@{0}, you have {1} currency. \n```\n```Markdown\n# You're about to purchase a {2} for {3} currency. To confirm type !yes, to decline, type !no.\n```".format(author.name, db_user.currency, itemName, price))
+            try:
+                confirm = await confirmDecision(author)
+                if confirm:
+                    new_buyer_balance = buyer_amount - price
+                    db_user.currency = new_buyer_balance
+                    session.commit()
+                    boughtItem = True
+                    await client.send_message(channel, "```diff\n+ {0} has been successfully purchased!\n```".format(itemName))
+                else:
+                    await client.send_message(channel, "```Markdown\n# Transaction cancelled.\n```")
+            except:
+                print("transaction with {0} timed out".format(author.name))
+        else:
+            await client.send_message(channel, "```Markdown\n- Not enough credits. {0} needed, you have {1}```".format(price, buyer_amount))
+    else:
+        await client.send_message(channel, "```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
+    return boughtItem
     
 #do role update every 3 hours
 scheduler.add_job(roletask, 'cron', hour='1,4,7,10,13,16,19,21')
