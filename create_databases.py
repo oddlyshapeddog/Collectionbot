@@ -24,6 +24,7 @@ class User(Base):
     totalsubmissions = Column(Integer, nullable=False)
     currentxp = Column(Integer, nullable=False)
     adores = Column(Integer, nullable=False)
+    highscore = Column(Integer, nullable=False)
  
 # Create an engine that stores data in the local directory's
 # sqlalchemy_example.db file.

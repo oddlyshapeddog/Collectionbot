@@ -36,7 +36,9 @@ session = DBSession() #session.commit() to store data, and session.rollback() to
 
 spreadsheet_schema = {"Discord Name":1,"Start Date":2,"Level":3,"Currency":4,"Streak":5,"Streak Expires":6,"Submitted Today?":7,"Raffle Prompt Submitted":8,"Week Team":9,"Month Team":10,"Referred By":11,"Prompts Added":12,"Current XP":13}
 months = {1:"January",2:"February",3:"March",4:"April",5:"May",6:"June",7:"July",8:"August",9:"September",10:"October",11:"November",12:"December"}
-streak_roles = ["0+ Streak","5+ Streak","10+ Streak","15+ Streak","20+ Streak","25+ Streak","30+ Streak","60+ Streak","90+ Streak","120+ Streak","150+ Streak","200+ Streak","250+ Streak","300+ Streak","Admins","Raffle","Community Admins","Type !help for info","@everyone","NSFW Artist", "Artists", "Head Admins"]
+nonach_roles = ["0+ Streak","5+ Streak","10+ Streak","15+ Streak","20+ Streak","25+ Streak","30+ Streak","60+ Streak","90+ Streak","120+ Streak","150+ Streak","200+ Streak","250+ Streak","300+ Streak","Admins","Raffle","Community Admins","Type !help for info","@everyone","NSFW Artist", "Artists", "Head Admins", "999+ Streak", "2000+ Streak", "Override (5+)", "Override (10+)", "Override (15+)", "Override (20+)", "Override (25+)", "Override (30+)", "Override (60+)", "Override (90+)", "Override (120+)", "Override (150+)", "Override (200+)", "Override (250+)", "Override (300+)"]
+override_roles = ["Override (5+)", "Override (10+)", "Override (15+)", "Override (20+)", "Override (25+)", "Override (30+)", "Override (60+)", "Override (90+)", "Override (120+)", "Override (150+)", "Override (200+)", "Override (250+)", "Override (300+)"]
+streak_roles = ["0+ Streak","5+ Streak","10+ Streak","15+ Streak","20+ Streak","25+ Streak","30+ Streak","60+ Streak","90+ Streak","120+ Streak","150+ Streak","200+ Streak","250+ Streak","300+ Streak", "999+ Streak", "2000+ Streak"]
 eight_ball = ["It is certain.","It is decidedly so.","Without a doubt.","Yes, definitely.","You may rely on it.","As I see it, yes.","Most likely.","Outlook good.","Yes.","Signs point to yes.","Reply hazy try again.","Ask again later.","Better not tell you now.","Cannot predict now.","Concentrate and ask again.","Don't count on it.","My reply is no.","My sources say no.","Outlook not so good.","Very doubtful."]
 
 channel_ids = {"class_1":"241060721994104833", "class_2":"236678008562384896"}
@@ -48,8 +50,6 @@ adminRole = 'no role'
 ### Simple bot for Discord designed to manage image collection.
 
 logging.basicConfig(level = logging.INFO)
-botEmail =  ""
-botPassword = ""
 
 client = discord.Client()
 
@@ -62,7 +62,7 @@ if(live):
 else:
     serverName = 'WhatsaTestServer'
     botChannelName = 'botspam'
-    submitChannels = ['271516310314156042','284618270659575818']
+    submitChannels = ['271516310314156042','284618270659575818','386395766505340939']
 ##########################
     
 
@@ -162,7 +162,7 @@ async def on_message(message):
         #add a new user if there's no registered user
         if not already_registered:
             #create new user object
-            new_user = User(name=message.author.name, level=1, id=message.author.id, startdate=curdate, currency=0, streak=0, expiry=curdate, submitted=0, raffle=0, promptsadded=0, totalsubmissions=0, currentxp=0, adores=0)
+            new_user = User(name=message.author.name, level=1, id=message.author.id, startdate=curdate, currency=0, streak=0, expiry=curdate, submitted=0, raffle=0, promptsadded=0, totalsubmissions=0, currentxp=0, adores=0, highscore=0)
             #add to session
             session.add(new_user)
             #give relevant roles
@@ -272,9 +272,9 @@ async def on_message(message):
         serv = message.server
         ach_card = "```Python\n @{0} - Achievements\n# Note: unlocked ones are in green and denoted with a '+'.\n```\n```diff\n".format(message.author.name)
         for rank in serv.roles:
-            if rank in message.author.roles and rank.name not in streak_roles:
+            if rank in message.author.roles and rank.name not in nonach_roles:
                 ach_card = ach_card + '+ {0}\n'.format(rank.name)
-            if rank not in message.author.roles and rank.name not in streak_roles:
+            if rank not in message.author.roles and rank.name not in nonach_roles:
                 ach_card = ach_card + '# {0}\n'.format(rank.name)
         ach_card = ach_card + "```"
         await client.send_message(message.channel, ach_card)
@@ -480,6 +480,44 @@ async def on_message(message):
                 db_user.currency = new_currency
                 session.commit()
                 await client.send_message(message.channel,"```diff\n+ Successfully payed {0} credits for {1}. Your total balance is now: {2}\n```".format(price,item_name,new_currency))
+    elif message.content.lower().startswith('!override'):
+        override_string = message.content.split(" ")
+        #get user ID to roll back
+        if(len(override_string) >= 2):
+            override_string = override_string[1]
+            override_role = 0
+            #try to find user in database using id
+            foundname = False
+            try:
+                db_user = session.query(User).filter(User.id == message.author.id).one()
+                foundname = True
+            except sqlalchemy.orm.exc.NoResultFound:
+                print('No user found, probably not registered')
+            except sqlalchemy.orm.exc.MultipleResultsFound:
+                print('Multiple users found, something is really broken!')
+            #get override role
+            roleName = ""
+            if(override_string in ["5","10","15","20","25","30","60","90","120","150","200","250","300"]):
+                roleName = "Override (" + override_string + "+)"
+            
+            
+            role = discord.utils.get(message.server.roles, name=roleName)
+            if(override_string.lower() == "none" or role != None):
+                #remove other overrides from user
+                orRoles = [r for r in message.author.roles if r.name.startswith("Override")]
+                print(orRoles)
+                await client.remove_roles(message.author, *orRoles)
+                
+                if(override_string.lower() == "none"):
+                    await client.send_message(message.channel,"```diff\n+Your Override has successfully been removed```")
+                #check if high score allows it
+                elif( int(override_string) <= db_user.highscore):
+                    #add new override to user
+                    await client.add_roles(message.author, role)
+                    await client.send_message(message.channel,"```diff\n+You have successfully been granted the " + override_string + " Override role```")
+                elif( int(override_string) > db_user.highscore):
+                    await client.send_message(message.channel,"```diff\n-Your Streak high score is not high enough to use that override```")
+
     elif message.content.lower().startswith("!undo") and (message.author.top_role >= adminRole):
         userid = message.content.split(" ")
         #get user ID to roll back
@@ -639,86 +677,54 @@ async def updateRoles(serv):
         for person in serv.members:
             if dbUser.id == person.id:
                 member = person
-        #if we found a member, update their roles
+        #if we found a member,
+        #await client.add_roles(member,rank)
         if(member != False):
-            if streak >= 300:
-                for rank in serv.roles:
-                    if rank.name == "300+ Streak":
-                        if(rank not in member.roles):
-                            await client.add_roles(member,rank)
-                            print("updating roles for {0} with streak {1}".format(member, streak))
-            elif streak >= 250 and streak < 300:
-                for rank in serv.roles:
-                    if rank.name == "250+ Streak":
-                        if(rank not in member.roles):
-                            await client.add_roles(member,rank)
-                            print("updating roles for {0} with streak {1}".format(member, streak))
-            elif streak >= 200 and streak < 250:
-                for rank in serv.roles:
-                    if rank.name == "200+ Streak":
-                        if(rank not in member.roles):
-                            await client.add_roles(member,rank)
-                            print("updating roles for {0} with streak {1}".format(member, streak))
-            elif streak >= 150 and streak < 200:
-                for rank in serv.roles:
-                    if rank.name == "150+ Streak":
-                        if(rank not in member.roles):
-                            await client.add_roles(member,rank)
-                            print("updating roles for {0} with streak {1}".format(member, streak))
-            elif streak >= 120 and streak < 150:
-                for rank in serv.roles:
-                    if rank.name == "120+ Streak":
-                        if(rank not in member.roles):
-                            await client.add_roles(member,rank)
-                            print("updating roles for {0} with streak {1}".format(member, streak))
-            elif streak >= 90 and streak < 120:
-                for rank in serv.roles:
-                    if rank.name == "90+ Streak":
-                        if(rank not in member.roles):
-                            await client.add_roles(member,rank)
-                            print("updating roles for {0} with streak {1}".format(member, streak))
-            elif streak >= 60 and streak < 100:
-                for rank in serv.roles:
-                    if rank.name == "60+ Streak":
-                        if(rank not in member.roles):
-                            await client.add_roles(member,rank)
-                            print("updating roles for {0} with streak {1}".format(member, streak))
-            elif streak >= 30 and streak < 60:
-                for rank in serv.roles:
-                    if rank.name == "30+ Streak":
-                        if(rank not in member.roles):
-                            await client.add_roles(member,rank)
-                            print("updating roles for {0} with streak {1}".format(member, streak))
-            elif streak >= 25 and streak < 30:
-                for rank in serv.roles:
-                    if rank.name == "25+ Streak":
-                        if(rank not in member.roles):
-                            await client.add_roles(member,rank)
-                            print("updating roles for {0} with streak {1}".format(member, streak))
-            elif streak >=20 and streak < 25:
-                for rank in serv.roles:
-                    if rank.name == "20+ Streak":
-                        if(rank not in member.roles):
-                            await client.add_roles(member,rank)
-                            print("updating roles for {0} with streak {1}".format(member, streak))
-            elif streak >=15 and streak < 20:
-                for rank in serv.roles:
-                    if rank.name == "15+ Streak":
-                        if(rank not in member.roles):
-                            await client.add_roles(member,rank)
-                            print("updating roles for {0} with streak {1}".format(member, streak))
-            elif streak >=10 and streak < 15:
-                for rank in serv.roles:
-                    if rank.name == "10+ Streak":
-                        if(rank not in member.roles):
-                            await client.add_roles(member,rank)
-                            print("updating roles for {0} with streak {1}".format(member, streak))
-            elif streak >=5 and streak < 10:
-                for rank in serv.roles:
-                    if rank.name == "5+ Streak":
-                        if(rank not in member.roles):
-                            await client.add_roles(member,rank)
-                            print("updating roles for {0} with streak {1}".format(member, streak))
+            #identify the role they should have
+            streakRank = None
+            if streak >= 2000:
+                streakRank = discord.utils.get(serv.roles, name="2000+ Streak")
+            elif streak >= 999:
+                streakRank = discord.utils.get(serv.roles, name="999+ Streak")
+            elif streak >= 300:
+                streakRank = discord.utils.get(serv.roles, name="300+ Streak")
+            elif streak >= 250:
+                streakRank = discord.utils.get(serv.roles, name="250+ Streak")
+            elif streak >= 200:
+                streakRank = discord.utils.get(serv.roles, name="200+ Streak")
+            elif streak >= 150:
+                streakRank = discord.utils.get(serv.roles, name="150+ Streak")
+            elif streak >= 120:
+                streakRank = discord.utils.get(serv.roles, name="120+ Streak")
+            elif streak >= 90:
+                streakRank = discord.utils.get(serv.roles, name="90+ Streak")
+            elif streak >= 60:
+                streakRank = discord.utils.get(serv.roles, name="60+ Streak")
+            elif streak >= 30:
+                streakRank = discord.utils.get(serv.roles, name="30+ Streak")
+            elif streak >= 25:
+                streakRank = discord.utils.get(serv.roles, name="25+ Streak")
+            elif streak >= 20:
+                streakRank = discord.utils.get(serv.roles, name="20+ Streak")
+            elif streak >= 15:
+                streakRank = discord.utils.get(serv.roles, name="15+ Streak")
+            elif streak >= 10:
+                streakRank = discord.utils.get(serv.roles, name="10+ Streak")
+            elif streak >= 5:
+                streakRank = discord.utils.get(serv.roles, name="5+ Streak")
+            
+            if(streakRank != None and streakRank not in member.roles):
+                await client.add_roles(member,streakRank)
+                print("updating roles for {0} with streak {1}".format(member, streak))
+            
+            #identify roles they should not have
+            otherRoles = [r for r in member.roles if r.name in streak_roles]
+            print(otherRoles)
+            if(streakRank != None and streakRank in otherRoles):
+                otherRoles.remove(streakRank)
+            print(otherRoles)
+            #remove the roles they shouldn't have
+            await client.remove_roles(member, *otherRoles)
 
 async def linkSubmit(message, userToUpdate):
     url = message.content.split(" ")
@@ -742,7 +748,7 @@ async def normalSubmit(message, userToUpdate):
 
 async def handleSubmit(message, userToUpdate, url):
     curdate = datetime.utcnow()
-    potentialstreak = curdate + timedelta(days=8)
+    potentialstreak = curdate + timedelta(days=7)
     today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
     streakdate = "{0}-{1}-{2}".format(potentialstreak.month, potentialstreak.day, potentialstreak.year)
     print('getting filepath to download for ' + str(userToUpdate.name))
@@ -796,6 +802,9 @@ async def handleSubmit(message, userToUpdate, url):
                 #otherwise just increase exp
                 else:
                     db_user.currentxp = str(new_xp_total)
+                #update high score if it's higher
+                if current_streak > db_user.highscore:
+                    db_user.highscore = current_streak
                 #write all new values to our cells
                 db_user.totalsubmissions = newscore
                 db_user.currency = newcurrency
@@ -854,6 +863,6 @@ scheduler.add_job(roletask, 'cron', hour='1,4,7,10,13,16,19,21')
 scheduler.add_job(housekeeper, 'cron', hour=7)
 scheduler.start()
 if(live):
-    client.run(botEmail, botPassword)
+    client.run('') #botross account
 else:
-    client.run('')
+    client.run('') #whatsa test account
