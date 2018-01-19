@@ -847,8 +847,8 @@ async def handleSubmit(message, userToUpdate, url):
                 else:
                     db_user.currentxp = str(new_xp_total)
                 #update high score if it's higher
-                if current_streak > db_user.highscore:
-                    db_user.highscore = current_streak
+                if new_streak > db_user.highscore:
+                    db_user.highscore = new_streak
                 #write all new values to our cells
                 db_user.totalsubmissions = newscore
                 db_user.currency = newcurrency
