@@ -135,7 +135,8 @@ async def on_message(message):
         await client.send_message(message.channel, "```Markdown\n {0} has paid their respects.\n```".format(message.author))
     elif message.content.lower().startswith('!submit') and message.author != message.author.server.me:
         if (message.channel.id in submitChannels):
-            if "https://" in message.content.lower() or "http://" in message.content.lower():
+            filetypes = [".gif",".jpg",".jpeg",".png"]
+            if ("https://" in message.content.lower() or "http://" in message.content.lower()) and any(u in message.content.lower() for u in filetypes) :
                 # do linksubmit
                 await linkSubmit(message, message.author)
             else:
@@ -579,7 +580,8 @@ async def on_message(message):
         print('proxy submission - ' + str(len(message.mentions)))
         if (len(message.mentions)>0):
             userToUpdate = message.mentions[0]
-            if "https://" in message.content.lower() or "http://" in message.content.lower():
+            filetypes = [".gif",".jpg",".jpeg",".png"]
+            if ("https://" in message.content.lower() or "http://" in message.content.lower()) and any(u in message.content.lower() for u in filetypes) :
                 # do linksubmit
                 await linkSubmit(message, userToUpdate)
             else:
