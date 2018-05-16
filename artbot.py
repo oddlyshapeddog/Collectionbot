@@ -163,7 +163,7 @@ async def on_message(message):
         #add a new user if there's no registered user
         if not already_registered:
             #create new user object
-            new_user = User(name=message.author.name, level=1, id=message.author.id, startdate=curdate, currency=0, streak=0, expiry=curdate, submitted=0, raffle=0, promptsadded=0, totalsubmissions=0, currentxp=0, adores=0, highscore=0)
+            new_user = User(name=message.author.name, level=1, id=message.author.id, startdate=curdate, currency=0, streak=0, expiry=curdate, submitted=0, raffle=0, promptsadded=0, totalsubmissions=0, currentxp=0, adores=0, highscore=0, decaywarning=True)
             #add to session
             session.add(new_user)
             #give relevant roles
@@ -181,7 +181,7 @@ async def on_message(message):
             await client.send_message(message.channel, "```Markdown\n# You're already registered!\n```")
 
     elif message.content.lower().startswith('!help') and message.author != message.author.server.me:
-        await client.send_message(message.channel,"```Markdown\n# Here's a quick little starter guide for all of you happy little artists wishing to participate.\n# !register will add you to our spreadsheet where we keep track of every submission you make\n# To submit content, drag and drop the file (.png, .gif, .jpg) into discord and add '!submit' as a comment to it.\n# If you'd like to submit via internet link, make sure you right click the image and select 'copy image location' and submit that URL using the !submit command.\n# The !timeleft command will let you know how much longer you have left to submit for the day!\n# To see your current scorecard, type !stats \n# To see your achievement status, type !ach\n# Having trouble figuring out what to draw? Override your role colour using !override <Role Number>\n``` \n ```diff\n - For those of our older artists, you may access the nsfw channels by typing !nsfwjoin and you can hide those channels by typing !nsfwleave. \n - When submitting nsfwcontent please use the r18 channels respectively!!\n```")
+        await client.send_message(message.channel,"```Markdown\n# Here's a quick little starter guide for all of you happy little artists wishing to participate.\n# !register will add you to our spreadsheet where we keep track of every submission you make\n# To submit content, drag and drop the file (.png, .gif, .jpg) into discord and add '!submit' as a comment to it.\n# If you'd like to submit via internet link, make sure you right click the image and select 'copy image location' and submit that URL using the !submit command.\n# The !timeleft command will let you know how much longer you have left to submit for the day!\n# To see your current scorecard, type !stats \n# To see your achievement status, type !ach\n# Having trouble figuring out what to draw? Override your role colour using !override <Role Number>\n# To turn on or off the PM warning system about your streak use the command !streakwarning on or !streakwarning off\n``` \n ```diff\n - For those of our older artists, you may access the nsfw channels by typing !nsfwjoin and you can hide those channels by typing !nsfwleave. \n - When submitting nsfwcontent please use the r18 channels respectively!!\n```")
     elif message.content.lower().startswith('!stats') and message.author != message.author.server.me:
         foundscore = False
         #try to find user in database using id
@@ -712,6 +712,65 @@ async def on_message(message):
         except:
             print("Raffle Reset timed out")
 
+    elif message.content.lower().startswith('!streakwarning off') and message.author != message.author.server.me:
+        foundname = False
+
+        try:
+            db_user = session.query(User).filter(User.id == message.author.id).one()
+            foundname = True
+        except sqlalchemy.orm.exc.NoResultFound:
+            print('No user found, probably not registered')
+        except sqlalchemy.orm.exc.MultipleResultsFound:
+            print('Multiple users found, something is really broken!')
+
+        if(foundname):
+            curr_mode = curr_mode = db_user.decaywarning
+            if(curr_mode == True):
+                await client.send_message(message.channel, "```Python\n@{0}\n```\n```Markdown\n# You're about to you're about to turn off PM warnings for your streak, to confirm this change type !yes, to decline, type !no.\n```".format(message.author.name))
+                try:
+                    confirm = await confirmDecision(message.author)
+                    if(confirm):
+                        db_user.decaywarning = False
+                        await client.send_message(message.channel,"```diff\n+ PM warnings have been turned off\n```")
+                    else:
+                        await client.send_message(message.channel, "```Markdown\n# PM warnings are still on\n```")
+                except:
+                    print("{0} warning mode unchanged".format(message.author.name))
+            else:
+                await client.send_message(message.channel, "```Markdown\n# PM warnings are already off, use the command !streakwarning on to turn it back on\n```")
+        else:
+             await client.send_message(message.channel, "```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
+
+
+    elif message.content.lower().startswith('!streakwarning on') and message.author != message.author.server.me:
+        foundname = False
+        
+        try:
+            db_user = session.query(User).filter(User.id == message.author.id).one()
+            foundname = True
+        except sqlalchemy.orm.exc.NoResultFound:
+            print('No user found, probably not registered')
+        except sqlalchemy.orm.exc.MultipleResultsFound:
+            print('Multiple users found, something is really broken!')
+
+        if(foundname):
+            curr_mode = curr_mode = db_user.decaywarning
+            if(curr_mode == False):
+                await client.send_message(message.channel, "```Python\n@{0}\n```\n```Markdown\n# You're about to you're about to turn on PM warnings for your streak, to confirm this change type !yes, to decline, type !no.\n```".format(message.author.name))
+                try:
+                    confirm = await confirmDecision(message.author)
+                    if(confirm):
+                        db_user.decaywarning = True
+                        await client.send_message(message.channel,"```diff\n+ PM warnings have been turned on\n```")
+                    else:
+                        await client.send_message(message.channel, "```Markdown\n# PM warnings are still off\n```")
+                except:
+                    print("{0} warning mode unchanged".format(message.author.name))
+            else:
+                await client.send_message(message.channel, "```Markdown\n# PM warnings are already on, use the command !streakwarning off to turn it back off\n```")
+        else:
+             await client.send_message(message.channel, "```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
+
 async def updateRoles(serv):
     #get all rows and put into memory
     for dbUser in session.query(User).all():
@@ -882,12 +941,27 @@ async def housekeeper():
 
     for curr_member in members:
         # Update in batch
+        #set user in beginning if its needed to PM a user
+        user = discord.utils.get(client.get_all_members(), id=str(curr_member.id))
+        #check for warning until streak decay begins
+        days_left = (curr_member.expiry - curdate.date()).days
+        if(curr_member.decaywarning == True and curr_member.streak > 0):
+            if(days_left == 3):
+                await client.send_message(user,"You have 3 days until your streak begins to expire!\nIf you want to disable these warning messages then enter the command streakwarning off in the #bot-channel")
+            elif(days_left == 1):
+                await client.send_message(user,"You have 1 day until your streak begins to expire!\nIf you want to disable these warning messages then enter the command streakwarning off in the #bot-channel")
+
         #If we're past the streak
         if((curdate.date() - curr_member.expiry).days >= 0 and curr_member.streak > 0):
+           
             pointReduce = pow(2,(curdate.date() - curr_member.expiry).days+1)
             #reduce streak by 2^(daysPastStreak+1), until streak is zero
             print("Removing {0} points from {1}'s streak".format(pointReduce,curr_member.name))
             curr_member.streak = max(curr_member.streak-pointReduce,0)
+            #give a pm to warn about streak decay if member has left warnings on
+            if(curr_member.decaywarning == True):
+                await client.send_message(user,"Your streak has decayed by {0} points! Your streak is now {1}.\nIf you want to disable these warning messages then enter the command streakwarning off in the #bot-channel".format(str(pointReduce),str(curr_member.streak)))
+
         #Set submitted to no
         curr_member.submitted = 0
     #commit all changes to the sheet at once
