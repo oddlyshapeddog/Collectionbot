@@ -712,9 +712,9 @@ async def on_message(message):
         except:
             print("Raffle Reset timed out")
 
-    elif message.content.lower().startswith('!streakwarning off') and message.author != message.author.server.me:
+    elif message.content.lower().startswith('!streakwarning') and message.author != message.author.server.me:
+        #find database user    
         foundname = False
-
         try:
             db_user = session.query(User).filter(User.id == message.author.id).one()
             foundname = True
@@ -722,52 +722,41 @@ async def on_message(message):
             print('No user found, probably not registered')
         except sqlalchemy.orm.exc.MultipleResultsFound:
             print('Multiple users found, something is really broken!')
+        #on or off
+        sp = message.content.split(" ")        
 
         if(foundname):
-            curr_mode = curr_mode = db_user.decaywarning
-            if(curr_mode == True):
-                await client.send_message(message.channel, "```Python\n@{0}\n```\n```Markdown\n# You're about to you're about to turn off PM warnings for your streak, to confirm this change type !yes, to decline, type !no.\n```".format(message.author.name))
+            choice = True
+            if(len(sp) > 1):
+                if(sp[1].lower() == "on"): #command to turn on
+                    choice = True
+                elif(sp[1].lower() == "off"): #command to turn off
+                    choice = False
+                else:
+                    await client.send_message(message.channel, "```Markdown\n# Command has been entered incorrectly, please use !streakwarning on or !streakwarning off\n```")
+                    return #exit the method
+            else: #Just show whether it's on or off
+                status_string = "ON" if db_user.decaywarning == True else "OFF"
+                await client.send_message(message.channel, "```Markdown\n# PM warnings are currently turned " + status_string + ". Use !streakwarning on or !streakwarning off to change.\n```")
+                return #exit the method
+                    
+            curr_mode = db_user.decaywarning
+            choice_string = "ON" if choice == True else "OFF"
+            if(choice == curr_mode):
+                #just tell the user if we're not changing the status
+                await client.send_message(message.channel, "```Markdown\n# PM warnings are already " + choice_string + "\n```")
+            else: #otherwise ask the user for confirmation
+                await client.send_message(message.channel, "```Python\n@{0}\n```\n```Markdown\n# You're about to you're about to turn ".format(message.author.name) + choice_string + " PM warnings for your streak, to confirm this change type !yes, to decline, type !no.\n```")
                 try:
                     confirm = await confirmDecision(message.author)
-                    if(confirm):
-                        db_user.decaywarning = False
-                        await client.send_message(message.channel,"```diff\n+ PM warnings have been turned off\n```")
+                    if(confirm): #if the user confirms update the database
+                        db_user.decaywarning = choice
+                        session.commit() #always commit the session after changes
+                        await client.send_message(message.channel,"```diff\n+ PM warnings have been turned "+ choice_string + "\n```")
                     else:
-                        await client.send_message(message.channel, "```Markdown\n# PM warnings are still on\n```")
+                        await client.send_message(message.channel, "```Markdown\n# PM warnings are unchanged\n```")
                 except:
                     print("{0} warning mode unchanged".format(message.author.name))
-            else:
-                await client.send_message(message.channel, "```Markdown\n# PM warnings are already off, use the command !streakwarning on to turn it back on\n```")
-        else:
-             await client.send_message(message.channel, "```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
-
-
-    elif message.content.lower().startswith('!streakwarning on') and message.author != message.author.server.me:
-        foundname = False
-        
-        try:
-            db_user = session.query(User).filter(User.id == message.author.id).one()
-            foundname = True
-        except sqlalchemy.orm.exc.NoResultFound:
-            print('No user found, probably not registered')
-        except sqlalchemy.orm.exc.MultipleResultsFound:
-            print('Multiple users found, something is really broken!')
-
-        if(foundname):
-            curr_mode = curr_mode = db_user.decaywarning
-            if(curr_mode == False):
-                await client.send_message(message.channel, "```Python\n@{0}\n```\n```Markdown\n# You're about to you're about to turn on PM warnings for your streak, to confirm this change type !yes, to decline, type !no.\n```".format(message.author.name))
-                try:
-                    confirm = await confirmDecision(message.author)
-                    if(confirm):
-                        db_user.decaywarning = True
-                        await client.send_message(message.channel,"```diff\n+ PM warnings have been turned on\n```")
-                    else:
-                        await client.send_message(message.channel, "```Markdown\n# PM warnings are still off\n```")
-                except:
-                    print("{0} warning mode unchanged".format(message.author.name))
-            else:
-                await client.send_message(message.channel, "```Markdown\n# PM warnings are already on, use the command !streakwarning off to turn it back off\n```")
         else:
              await client.send_message(message.channel, "```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
 
@@ -816,11 +805,7 @@ async def updateRoles(serv):
                 streakRank = discord.utils.get(serv.roles, name="10+ Streak")
             elif streak >= 5:
                 streakRank = discord.utils.get(serv.roles, name="5+ Streak")
-            
-            if(streakRank != None and streakRank not in member.roles):
-                await client.add_roles(member,streakRank)
-                print("updating roles for {0} with streak {1}".format(member, streak))
-            
+           
             #identify roles they should not have
             otherRoles = [r for r in member.roles if r.name in streak_roles]
             print(otherRoles)
@@ -830,6 +815,10 @@ async def updateRoles(serv):
             #remove the roles they shouldn't have
             if(len(otherRoles) > 0):
                 await client.remove_roles(member, *otherRoles)
+            #add the correct role
+            if(streakRank != None and streakRank not in member.roles):
+                await client.add_roles(member,streakRank)
+                print("updating roles for {0} with streak {1}".format(member, streak))
 
 async def linkSubmit(message, userToUpdate):
     url = message.content.split(" ")
