@@ -13,6 +13,7 @@ import pytz
 import sqlalchemy
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy import update    
 import time
 from datetime import date, timedelta, time, datetime
 #declaration for User class is in here
@@ -928,10 +929,17 @@ async def housekeeper():
     members = session.query(User).all()
     print("Housekeeping on " + str(len(members)) + " rows on " + today)
 
+    #reset all member's submitted status
+    stmt = update(User).values(submitted=0)
+    session.execute(stmt)
+    session.commit()
+    #get list of all discord users
+    all_members = client.get_all_members()
+    
     for curr_member in members:
         # Update in batch
         #set user in beginning if its needed to PM a user
-        user = discord.utils.get(client.get_all_members(), id=str(curr_member.id))
+        user = discord.utils.get(all_members, id=str(curr_member.id))
         #check for warning until streak decay begins
         days_left = (curr_member.expiry - curdate.date()).days
         if(curr_member.decaywarning == True and curr_member.streak > 0):
@@ -951,8 +959,6 @@ async def housekeeper():
             if(curr_member.decaywarning == True):
                 await client.send_message(user,"Your streak has decayed by {0} points! Your streak is now {1}.\nIf you want to disable these warning messages then enter the command streakwarning off in the #bot-channel".format(str(pointReduce),str(curr_member.streak)))
 
-        #Set submitted to no
-        curr_member.submitted = 0
     #commit all changes to the sheet at once
     session.commit()
     print("housekeeping finished")
