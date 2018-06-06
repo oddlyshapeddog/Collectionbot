@@ -13,7 +13,7 @@ import pytz
 import sqlalchemy
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import update    
+from sqlalchemy import update
 import time
 from datetime import date, timedelta, time, datetime
 #declaration for User class is in here
@@ -65,7 +65,7 @@ else:
     botChannelName = 'botspam'
     submitChannels = ['271516310314156042','284618270659575818','386395766505340939']
 ##########################
-    
+
 
 @client.event
 async def on_ready():
@@ -153,16 +153,10 @@ async def on_message(message):
         today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
         already_registered = False
         #try to find user in database using id
-        try:
-            db_user = session.query(User).filter(User.id == message.author.id).one()
-            already_registered = True
-        except sqlalchemy.orm.exc.NoResultFound:
-            print('No user found, this is fine, creating new user now.')
-        except sqlalchemy.orm.exc.MultipleResultsFound:
-            print('Multiple users found, something is really broken!')
+        db_user = getDBUser(message.author.id)
 
         #add a new user if there's no registered user
-        if not already_registered:
+        if (db_user == None):
             #create new user object
             new_user = User(name=message.author.name, level=1, id=message.author.id, startdate=curdate, currency=0, streak=0, expiry=curdate, submitted=0, raffle=0, promptsadded=0, totalsubmissions=0, currentxp=0, adores=0, highscore=0, decaywarning=True)
             #add to session
@@ -184,19 +178,11 @@ async def on_message(message):
     elif message.content.lower().startswith('!help') and message.author != message.author.server.me:
         await client.send_message(message.channel,"```Markdown\n# Here's a quick little starter guide for all of you happy little artists wishing to participate.\n# !register will add you to our spreadsheet where we keep track of every submission you make\n# To submit content, drag and drop the file (.png, .gif, .jpg) into discord and add '!submit' as a comment to it.\n# If you'd like to submit via internet link, make sure you right click the image and select 'copy image location' and submit that URL using the !submit command.\n# The !timeleft command will let you know how much longer you have left to submit for the day!\n# To see your current scorecard, type !stats \n# To see your achievement status, type !ach\n# Having trouble figuring out what to draw? Override your role colour using !override <Role Number>\n# To turn on or off the PM warning system about your streak use the command !streakwarning on or !streakwarning off\n``` \n ```diff\n - For those of our older artists, you may access the nsfw channels by typing !nsfwjoin and you can hide those channels by typing !nsfwleave. \n - When submitting nsfwcontent please use the r18 channels respectively!!\n```")
     elif message.content.lower().startswith('!stats') and message.author != message.author.server.me:
-        foundscore = False
         #try to find user in database using id
-        try:
-            db_user = session.query(User).filter(User.id == message.author.id).one()
-            foundscore = True
-        except sqlalchemy.orm.exc.NoResultFound:
-            print('No user found, probably not registered')
-        except sqlalchemy.orm.exc.MultipleResultsFound:
-            print('Multiple users found, something is really broken!')
-
+        db_user = getDBUser(message.author.id)
 
         #if we found the user in our spreadsheet
-        if foundscore == True:
+        if (db_user != None):
             #then extract individual stats for simplicity
             user_name = db_user.name
             current_score = db_user.totalsubmissions
@@ -316,18 +302,11 @@ async def on_message(message):
         await client.send_message(message.channel, "```Markdown\n# {0}\n```".format(random.choice(fp.readlines())))
         fp.close()
     elif message.content.lower().startswith('!idea') and message.author != message.author.server.me:
-        foundname = False
         serv = message.server
         #try to find user in database using id
-        try:
-            db_user = session.query(User).filter(User.id == message.author.id).one()
-            foundname = True
-        except sqlalchemy.orm.exc.NoResultFound:
-            print('No user found, probably not registered')
-        except sqlalchemy.orm.exc.MultipleResultsFound:
-            print('Multiple users found, something is really broken!')
+        db_user = getDBUser(message.author.id)
 
-        if not foundname:
+        if (db_user == None):
             await client.send_message(message.channel, "```diff\n- You need to be registered to suggest prompts.\n```")
         else:
             db_user.promptsadded = newpromptscore = db_user.promptsadded+1
@@ -400,16 +379,9 @@ async def on_message(message):
         today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
         streakdate = "{0}-{1}-{2}".format(potentialstreak.month, potentialstreak.day, potentialstreak.year)
         #try to find user in database using id
-        foundname = False
-        try:
-            db_user = session.query(User).filter(User.id == message.author.id).one()
-            foundname = True
-        except sqlalchemy.orm.exc.NoResultFound:
-            print('No user found, probably not registered')
-        except sqlalchemy.orm.exc.MultipleResultsFound:
-            print('Multiple users found, something is really broken!')
+        db_user = getDBUser(message.author.id)
 
-        if foundname:
+        if (db_user != None):
             buyer_amount = db_user.currency
             if buyer_amount >= price:
                 await client.send_message(message.channel, "```Python\n@{0}\n```\n```Markdown\n# You're about to purchase a 30 day vacation to protect your streak for 100 credits. (any new submissions will reset this to 7 days). To confirm and buy type !yes, to decline, type !no.\n```".format(message.author.name))
@@ -454,19 +426,11 @@ async def on_message(message):
         parse = message.content.split(" ")
         item_name = parse[1].lower()
         price = 0
-        foundname = False
         serv = message.server
         #try to find user in database using id
-        try:
-            db_user = session.query(User).filter(User.id == message.author.id).one()
-            foundname = True
-        except sqlalchemy.orm.exc.NoResultFound:
-            print('No user found, probably not registered')
-        except sqlalchemy.orm.exc.MultipleResultsFound:
-            print('Multiple users found, something is really broken!')
+        db_user = getDBUser(message.author.id)
 
-
-        if not foundname:
+        if (db_user == None):
             await client.send_message(message.channel,"```diff\n- You were not found in sheet, make sure to register before you use the shop.\n```")
         else:
             buyer_currency = db_user.currency
@@ -490,43 +454,37 @@ async def on_message(message):
             override_string = override_string[1]
             override_role = 0
             #try to find user in database using id
-            foundname = False
-            try:
-                db_user = session.query(User).filter(User.id == message.author.id).one()
-                foundname = True
-            except sqlalchemy.orm.exc.NoResultFound:
-                print('No user found, probably not registered')
-            except sqlalchemy.orm.exc.MultipleResultsFound:
-                print('Multiple users found, something is really broken!')
-            #get override role
-            roleName = ""
-            if(override_string in ["5","10","15","20","25","30","60","90","120","150","200","250","300"]):
-                roleName = "Override (" + override_string + "+)"
-            
-            
-            role = discord.utils.get(message.server.roles, name=roleName)
-            if(override_string.lower() == "none" or role != None):
-                #get override roles to remove
-                orRoles = [r for r in message.author.roles if r.name.startswith("Override")]
-                
-                if(override_string.lower() == "none"):
-                    #remove old roles
-                    await client.remove_roles(message.author, *orRoles)
-                    await client.send_message(message.channel,"```diff\n+Your Override has successfully been removed```")
-                #check if high score allows it
-                elif( int(override_string) <= db_user.highscore):
-                    #Now do the purchase code 
-                    purchase = await buyitem("Role Override Streak ({0})".format(override_string), 100, message.author, message.channel)
-                    if(purchase):
+            db_user = getDBUser(message.author.id)
+            if(db_user != None):
+                #get override role
+                roleName = ""
+                if(override_string in ["5","10","15","20","25","30","60","90","120","150","200","250","300"]):
+                    roleName = "Override (" + override_string + "+)"
+
+
+                role = discord.utils.get(message.server.roles, name=roleName)
+                if(override_string.lower() == "none" or role != None):
+                    #get override roles to remove
+                    orRoles = [r for r in message.author.roles if r.name.startswith("Override")]
+
+                    if(override_string.lower() == "none"):
                         #remove old roles
-                        print(orRoles)
                         await client.remove_roles(message.author, *orRoles)
-                        #add new override to user
-                        print(role)
-                        await client.add_roles(message.author, role)
-                        await client.send_message(message.channel,"```diff\n+You have successfully been granted the " + override_string + " Override role```")
-                elif( int(override_string) > db_user.highscore):
-                    await client.send_message(message.channel,"```diff\n-Your Streak high score is not high enough to use that override```")
+                        await client.send_message(message.channel,"```diff\n+Your Override has successfully been removed```")
+                    #check if high score allows it
+                    elif( int(override_string) <= db_user.highscore):
+                        #Now do the purchase code
+                        purchase = await buyitem("Role Override Streak ({0})".format(override_string), 100, message.author, message.channel)
+                        if(purchase):
+                            #remove old roles
+                            print(orRoles)
+                            await client.remove_roles(message.author, *orRoles)
+                            #add new override to user
+                            print(role)
+                            await client.add_roles(message.author, role)
+                            await client.send_message(message.channel,"```diff\n+You have successfully been granted the " + override_string + " Override role```")
+                    elif( int(override_string) > db_user.highscore):
+                        await client.send_message(message.channel,"```diff\n-Your Streak high score is not high enough to use that override```")
 
     elif message.content.lower().startswith("!undo") and (message.author.top_role >= adminRole):
         userid = message.content.split(" ")
@@ -540,16 +498,9 @@ async def on_message(message):
                 userid = "0"
 
         #try to find user in database using id
-        foundname = False
-        try:
-            db_user = session.query(User).filter(User.id == userid).one()
-            foundname = True
-        except sqlalchemy.orm.exc.NoResultFound:
-            print('No user found, probably not registered')
-        except sqlalchemy.orm.exc.MultipleResultsFound:
-            print('Multiple users found, something is really broken!')
+        db_user = getDBUser(userid)
 
-        if(foundname):
+        if(db_user != None):
             #update all the stats
             newscore = db_user.totalsubmissions-1
             newcurrency = db_user.currency-10
@@ -605,15 +556,9 @@ async def on_message(message):
             else:
                 userid = "0"
         #try to find user in database using id
-        foundname = False
-        try:
-            db_user = session.query(User).filter(User.id == userid).one()
-            foundname = True
-        except sqlalchemy.orm.exc.NoResultFound:
-            print('No user found, probably not registered')
-        except sqlalchemy.orm.exc.MultipleResultsFound:
-            print('Multiple users found, something is really broken!')
-        if(foundname):
+        db_user = getDBUser(userid)
+
+        if(db_user != None):
             #set streak to the given streak
             db_user.streak = newstreak
             session.commit()
@@ -633,15 +578,9 @@ async def on_message(message):
             else:
                 userid = "0"
         #try to find user in database using id
-        foundname = False
-        try:
-            db_user = session.query(User).filter(User.id == userid).one()
-            foundname = True
-        except sqlalchemy.orm.exc.NoResultFound:
-            print('No user found, probably not registered')
-        except sqlalchemy.orm.exc.MultipleResultsFound:
-            print('Multiple users found, something is really broken!')
-        if(foundname):
+        db_user = getDBUser(userid)
+
+        if(db_user != None):
             #set streak to the given streak
             db_user.highscore = newhighscore
             session.commit()
@@ -658,15 +597,9 @@ async def on_message(message):
             else:
                 userid = "0"
         #try to find user in database using id
-        foundname = False
-        try:
-            db_user = session.query(User).filter(User.id == userid).one()
-            foundname = True
-        except sqlalchemy.orm.exc.NoResultFound:
-            print('No user found, probably not registered')
-        except sqlalchemy.orm.exc.MultipleResultsFound:
-            print('Multiple users found, something is really broken!')
-        if(foundname):
+        db_user = getDBUser(userid)
+
+        if(db_user != None):
             #reset submission to false
             db_user.submitted = 0
             session.commit()
@@ -739,19 +672,13 @@ async def on_message(message):
             print("Raffle Reset timed out")
 
     elif message.content.lower().startswith('!streakwarning') and message.author != message.author.server.me:
-        #find database user    
-        foundname = False
-        try:
-            db_user = session.query(User).filter(User.id == message.author.id).one()
-            foundname = True
-        except sqlalchemy.orm.exc.NoResultFound:
-            print('No user found, probably not registered')
-        except sqlalchemy.orm.exc.MultipleResultsFound:
-            print('Multiple users found, something is really broken!')
-        #on or off
-        sp = message.content.split(" ")        
+        #find database user
+        db_user = getDBUser(message.author.id)
 
-        if(foundname):
+        #on or off
+        sp = message.content.split(" ")
+
+        if(db_user != None):
             choice = True
             if(len(sp) > 1):
                 if(sp[1].lower() == "on"): #command to turn on
@@ -765,7 +692,7 @@ async def on_message(message):
                 status_string = "ON" if db_user.decaywarning == True else "OFF"
                 await client.send_message(message.channel, "```Markdown\n# PM warnings are currently turned " + status_string + ". Use !streakwarning on or !streakwarning off to change.\n```")
                 return #exit the method
-                    
+
             curr_mode = db_user.decaywarning
             choice_string = "ON" if choice == True else "OFF"
             if(choice == curr_mode):
@@ -831,7 +758,7 @@ async def updateRoles(serv):
                 streakRank = discord.utils.get(serv.roles, name="10+ Streak")
             elif streak >= 5:
                 streakRank = discord.utils.get(serv.roles, name="5+ Streak")
-           
+
             #identify roles they should not have
             otherRoles = [r for r in member.roles if r.name in streak_roles]
             print(otherRoles)
@@ -875,18 +802,11 @@ async def handleSubmit(message, userToUpdate, url):
     filepath = os.getcwd()+"/"+today
 
     #try to find user in database using id
-    foundname = False
-    try:
-        db_user = session.query(User).filter(User.id == userToUpdate.id).one()
-        foundname = True
-        print('found user in database - ' + db_user.name)
-    except sqlalchemy.orm.exc.NoResultFound:
-        print('No user found, probably not registered')
-    except sqlalchemy.orm.exc.MultipleResultsFound:
-        print('Multiple users found, something is really broken!')
+    db_user = getDBUser(userToUpdate.id)
+
     #first find if we have  the user in our list
 
-    if not foundname:
+    if (db_user == None):
         await client.send_message(message.channel, "```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
     else:
         #db_user is our member object
@@ -960,7 +880,7 @@ async def housekeeper():
     session.commit()
     #get list of all discord users
     all_members = client.get_all_members()
-    
+
     for curr_member in members:
         # Update in batch
         #set user in beginning if its needed to PM a user
@@ -975,7 +895,7 @@ async def housekeeper():
 
         #If we're past the streak
         if((curdate.date() - curr_member.expiry).days >= 0 and curr_member.streak > 0):
-           
+
             pointReduce = pow(2,(curdate.date() - curr_member.expiry).days+1)
             #reduce streak by 2^(daysPastStreak+1), until streak is zero
             print("Removing {0} points from {1}'s streak".format(pointReduce,curr_member.name))
@@ -996,20 +916,13 @@ async def confirmDecision(user):
         return True
     elif confirm.content.lower().startswith('!no'):
         return False
-    
-    
+
+
 async def buyitem(itemName, price, author, channel):
-    foundname = False
     boughtItem = False
-    try:
-        db_user = session.query(User).filter(User.id == author.id).one()
-        foundname = True
-    except sqlalchemy.orm.exc.NoResultFound:
-        print('No user found, probably not registered')
-    except sqlalchemy.orm.exc.MultipleResultsFound:
-        print('Multiple users found, something is really broken!')
-        
-    if foundname:
+    db_user = getDBUser(author.id)
+
+    if (db_user != None):
         buyer_amount = db_user.currency
         if buyer_amount >= price:
             await client.send_message(channel, "```Python\n@{0}, you have {1} currency. \n```\n```Markdown\n# You're about to purchase a {2} for {3} currency. To confirm type !yes, to decline, type !no.\n```".format(author.name, db_user.currency, itemName, price))
@@ -1030,7 +943,17 @@ async def buyitem(itemName, price, author, channel):
     else:
         await client.send_message(channel, "```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
     return boughtItem
-    
+
+def getDBUser(userID): #gets the database user based on the user's ID
+    db_user = None #return none if we can't find a user
+    try: #try to find user in database using id
+        db_user = session.query(User).filter(User.id == userID).one()
+    except sqlalchemy.orm.exc.NoResultFound:
+        print('No user found, probably not registered')
+    except sqlalchemy.orm.exc.MultipleResultsFound:
+        print('Multiple users found, something is really broken!')
+    return db_user #this value will be None or a valid user, make sure to check
+
 #do role update every 3 hours
 scheduler.add_job(roletask, 'cron', hour='1,4,7,10,13,16,19,21')
 #run housekeeping at 7am UTC
