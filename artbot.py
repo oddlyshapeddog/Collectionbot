@@ -878,20 +878,28 @@ async def housekeeper():
     stmt = update(User).values(submitted=0)
     session.execute(stmt)
     session.commit()
-    #get list of all discord users
-    all_members = client.get_all_members()
 
     for curr_member in members:
+        print('housekeeping member {0}'.format(curr_member.name))
         # Update in batch
         #set user in beginning if its needed to PM a user
-        user = discord.utils.get(all_members, id=str(curr_member.id))
-        #check for warning until streak decay begins
-        days_left = (curr_member.expiry - curdate.date()).days
-        if(curr_member.decaywarning == True and curr_member.streak > 0):
-            if(days_left == 3):
-                await client.send_message(user,"You have 3 days until your streak begins to expire!\nIf you want to disable these warning messages then enter the command streakwarning off in the #bot-channel")
-            elif(days_left == 1):
-                await client.send_message(user,"You have 1 day until your streak begins to expire!\nIf you want to disable these warning messages then enter the command streakwarning off in the #bot-channel")
+        user = discord.utils.get(client.get_all_members(), id=str(curr_member.id))
+        if(user != None):
+            #check for warning until streak decay begins
+            days_left = (curr_member.expiry - curdate.date()).days
+            if(curr_member.decaywarning == True and curr_member.streak > 0):
+                if(days_left == 3):
+                    try:
+                        await client.send_message(user,"You have 3 days until your streak begins to expire!\nIf you want to disable these warning messages then enter the command streakwarning off in the #bot-channel")
+                    except:
+                        print('couldn\'t send 3day message')
+                elif(days_left == 1):
+                    try:
+                        await client.send_message(user,"You have 1 day until your streak begins to expire!\nIf you want to disable these warning messages then enter the command streakwarning off in the #bot-channel")
+                    except:
+                        print('couldn\'t send 1day message')
+        else:
+            print('User no longer visible to bot, must be gone')
 
         #If we're past the streak
         if((curdate.date() - curr_member.expiry).days >= 0 and curr_member.streak > 0):
@@ -901,9 +909,11 @@ async def housekeeper():
             print("Removing {0} points from {1}'s streak".format(pointReduce,curr_member.name))
             curr_member.streak = max(curr_member.streak-pointReduce,0)
             #give a pm to warn about streak decay if member has left warnings on
-            if(curr_member.decaywarning == True):
-                await client.send_message(user,"Your streak has decayed by {0} points! Your streak is now {1}.\nIf you want to disable these warning messages then enter the command streakwarning off in the #bot-channel".format(str(pointReduce),str(curr_member.streak)))
-
+            if(curr_member.decaywarning == True and user != None):
+                try:
+                    await client.send_message(user,"Your streak has decayed by {0} points! Your streak is now {1}.\nIf you want to disable these warning messages then enter the command streakwarning off in the #bot-channel".format(str(pointReduce),str(curr_member.streak)))
+                except:
+                    print('couldn\'t  send decay message')
     #commit all changes to the sheet at once
     session.commit()
     print("housekeeping finished")
