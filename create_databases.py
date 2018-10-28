@@ -26,6 +26,17 @@ class User(Base):
     adores = Column(Integer, nullable=False)
     highscore = Column(Integer, nullable=False)
     decaywarning = Column(Boolean, nullable=False)
+
+class Contest(Base):
+    __tablename__ = 'contest'
+
+    #have status be an INTEGER for the 3 states, prompt can stay the same, don't need extra commands yet, focus on the time
+    id = Column(Integer, primary_key=True)
+    mode = Column(Integer, nullable=False)
+    prompt = Column(String(100), nullable=False) 
+    end = Column(Date, nullable=False) #days parameter to keep track of when it ends
+    
+
  
 # Create an engine that stores data in the local directory's
 # sqlalchemy_example.db file.

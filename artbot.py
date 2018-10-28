@@ -17,7 +17,7 @@ from sqlalchemy import update
 import time
 from datetime import date, timedelta, time, datetime
 #declaration for User class is in here
-from create_databases import Base, User
+from create_databases import Base, User, Contest
 
 #scheduling stuff
 from pytz import utc
@@ -713,6 +713,174 @@ async def on_message(message):
         else:
              await client.send_message(message.channel, "```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
 
+    #admin command - give xp or take xp
+    # new ex. !xp 300 @mentioned users
+    # new ex. !xp -300 @mentioned users
+    elif message.content.lower().startswith('!xp') and message.author.top_role >= adminRole:
+        parse = message.content.split(" ")
+        xp_receivers = ""
+        if(len(parse) > 2):
+
+            if(isNumber(parse[1])):
+                xp_amount = abs(int(parse[1]))
+            else:
+                await client.send_message(message.channel, "```Markdown\n# Not a valid number\n```")
+                return
+
+            #give xp to a user
+            if(int(parse[1]) >= 0):
+                for person in message.mentions:
+
+                    db_user = session.query(User).filter(User.id == person.id).one()
+                    await addXP(db_user,xp_amount)
+                    xp_receivers = xp_receivers + " " + person.name
+                    await client.send_message(message.channel,"```Markdown\n# @{0} Level Up! You are now level {1}!\n```".format(person.name,db_user.level))   
+
+                session.commit()
+                await client.send_message(message.channel, "```Markdown\n# {0} experience points given to{1}\n```".format(xp_amount,xp_receivers))
+
+            #remove xp from a user
+            elif(int(parse[1]) < 0):
+                for person in message.mentions:
+
+                    db_user = session.query(User).filter(User.id == person.id).one()
+                    await subXP(db_user,xp_amount)
+                    xp_receivers = xp_receivers + " " + person.name
+                    await client.send_message(message.channel,"```Markdown\n# @{0} You are now level {1}!\n```".format(person.name,db_user.level))   
+
+                session.commit()        
+                await client.send_message(message.channel, "```Markdown\n# {0} experience points taken from{1}\n```".format(xp_amount,xp_receivers))
+
+            else:
+                await client.send_message(message.channel, "```Markdown\n# please enter in add/sub\n```")
+
+        else:
+            await client.send_message(message.channel, "```Markdown\n# please enter in the command as !xp add/sub (amount of xp) (mentions of users)\n```")
+    
+    #admin command
+    #fully reset use stats
+    elif message.content.lower().startswith('!fullreset') and message.author.top_role >= adminRole:
+        try:
+            receiver = message.mentions[0]
+            db_user = session.query(User).filter(User.id == receiver.id).one()
+            db_user.level = 1
+            db_user.currency = 0
+            db_user.streak = 0
+            db_user.highscore = 0
+            db_user.adores = 0
+            db_user.current_xp = 0
+            db_user.raffle = False
+            db_user.submitted = False
+            session.commit()
+            await client.send_message(message.channel,"```Markdown\n#{0} stats have been fully reset\n```".format(receiver.name))
+        except:
+            await client.send_message(message.channel,"```Markdown\n#Something went wrong.\n```")
+            session.rollback()
+
+    
+    # add in extension
+    elif message.content.lower().startswith('!contest') and len(message.content.lower()) > 8  and message.author.top_role >= adminRole:
+
+        #states, no contest(0), closed contest(1), open contest(2)
+        # commands, no(0), close(1), open(2), extension (add a confirmation message here or)
+
+        parse = message.content.split(" ")
+
+        mode = parse[1]
+
+        db_contest = getDBContest(0)
+
+        if(db_contest == None):
+
+            #default to no contest
+            new_contest = Contest(id = 0, mode = 0, prompt="No contest is currently running!", end=datetime.utcnow())
+            session.add(new_contest)
+            await client.send_message(message.channel, "new contest table added")
+            session.commit()
+
+        else:
+            #run other checks here
+
+            #contest off - this mode does not need any housechecks
+            if(mode.lower() == "off"):
+                await client.send_message(message.channel, "Turning off the contest")
+                db_contest.prompt = "No contest is being run right now."
+                db_contest.mode = 0
+                session.commit()
+            #contest closed - this mode does not need any house checks, but yes for other admin actions
+            elif(mode.lower() == "close"):
+                await client.send_message(message.channel, "Closing the contest")
+                db_contest.prompt = "The contest is closed, please wait until further announcements."
+                db_contest.mode = 1
+                session.commit()
+            #contest open - this mode will need house checks
+            elif(mode.lower() == "open"):
+                #change date to much shorterfor testing later
+                await client.send_message(message.channel, "```Markdown\n#Please enter in the prompt as !<insert prompt here>\n```")
+                confirm = await confirmContest(message.author)
+                await client.send_message(message.channel, "```Markdown\n#A new contest prompt has been added and opened which is {0}!\n```".format(str(confirm)))
+
+                curdate = datetime.utcnow()
+                endDate = curdate + timedelta(days=7)
+                await client.send_message(message.channel, "Opening the contest")
+                db_contest.prompt = confirm
+                db_contest.mode = 2
+                db_contest.end = endDate
+                session.commit()
+            #extend date of a contest if its open or closed
+            elif(mode.lower() == "extend" and (db_contest.mode == 2 or db_contest.mode == 1)):
+
+                endDate = db_contest.end + timedelta(days = 3)
+                db_contest.end = endDate
+                db_contest.mode = 2
+                session.commit()
+                await client.send_message(message.channel, "Contest has been extended by 3 days")
+
+            #can only edit the prompt of an open contest
+            elif(mode.lower() == "edit" and db_contest.mode == 2):
+
+                await client.send_message(message.channel, "```Markdown\n#Please enter in the prompt as !<insert prompt here>\n```")
+                confirm = await confirmContest(message.author)
+                await client.send_message(message.channel, "```Markdown\n#A new contest prompt has been added and opened which is {0}!\n```".format(str(confirm)))
+
+                db_contest.prompt = confirm
+                session.commit()
+
+            else:
+                await client.send_message(message.channel, "please type in off, closed, open, or extend!")
+
+
+    #use to keep track of how long the contest is
+    elif message.content.lower().startswith('!contest') and len(message.content.lower()) == 8 and message.author != message.author.server.me:
+
+        db_contest = getDBContest(0)
+
+        if (db_contest != None):
+            streak_expiration = db_contest.end
+            streak_expiration = datetime.combine(streak_expiration, time(2,0))
+            #and get now in UTC
+            now = datetime.utcnow()
+            #then compare the difference between those times
+            delta = streak_expiration - now
+            #get time difference
+            d_days = delta.days
+            delta = delta.seconds
+            d_sec = int(delta % 60)
+            delta = delta - d_sec
+            d_min = int((delta % 3600) / 60)
+            delta = delta - (d_min*60)
+            d_hour = int(delta / 3600)
+            await client.send_message(message.channel, "```Markdown\n#\"{0}\"\n```".format(db_contest.prompt))
+            if(db_contest.mode == 2):
+                await client.send_message(message.channel, "`The contest will run for {0} Days, {1} Hours, {2} Minutes, {3} Seconds`".format(d_days, d_hour, d_min, d_sec))
+        else:
+            await client.send_message(message.channel, "```Markdown\n#There is no contest data!\n```")            
+
+    elif message.content.lower().startswith('!runhouse') and message.author != message.author.server.me:
+        await client.send_message(message.channel, "run housekeeping for testing\n")
+        await housekeeper()
+            
+
 async def updateRoles(serv):
     #get all rows and put into memory
     for dbUser in session.query(User).all():
@@ -867,6 +1035,7 @@ async def roletask():
     await client.send_message(botChannel, "```diff\n+ Updating roles was a happy little success!\n```")
 
 async def housekeeper():
+    db_contest = getDBContest(0)
     curdate = datetime.utcnow()
     today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
 
@@ -878,6 +1047,16 @@ async def housekeeper():
     stmt = update(User).values(submitted=0)
     session.execute(stmt)
     session.commit()
+
+    if(db_contest != None):
+        if(db_contest.mode == 2):
+            days_left = (db_contest.end - curdate.date()).days
+            # days_left = 0
+            #contest has return to a closed state, manually change to a no contest state
+            if(days_left == 0):
+                db_contest.prompt = "The contest is closed, please wait until further announcements."
+                db_contest.mode = 1
+
 
     for curr_member in members:
         print('housekeeping member {0}'.format(curr_member.name))
@@ -927,6 +1106,14 @@ async def confirmDecision(user):
     elif confirm.content.lower().startswith('!no'):
         return False
 
+#redo this to work with -message-
+async def confirmContest(user):
+    def check(msg):
+        return msg.content.startswith('!')
+    confirm = await client.wait_for_message(timeout=180, author=user,check=check)
+    if confirm.content.lower().startswith('!'):
+        parse = confirm.content.split("!")
+        return parse[1]
 
 async def buyitem(itemName, price, author, channel):
     boughtItem = False
@@ -954,6 +1141,51 @@ async def buyitem(itemName, price, author, channel):
         await client.send_message(channel, "```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
     return boughtItem
 
+#add in xp, accounts for levels
+async def addXP(user,xp_amount):
+    current_xp = user.currentxp
+    xp_gained = xp_amount
+    current_level = user.level
+    next_level_required_xp = current_level*10 + 50
+    new_xp_total = current_xp + xp_gained
+
+    #while loop to get all the levels needed
+    while new_xp_total >= next_level_required_xp:
+        current_level = current_level + 1
+        new_xp_total = new_xp_total - next_level_required_xp
+        user.level = str(current_level)
+        user.currentxp = str(new_xp_total)
+        next_level_required_xp = current_level*10 + 50
+
+    user.level = str(current_level)
+    user.currentxp = str(new_xp_total) 
+
+#take away xp, accounts for levels
+async def subXP(user,xp_amount):
+    current_xp = user.currentxp
+    xp_taken = xp_amount
+    current_level = user.level
+    next_level_required_xp = (current_level-1)*10 + 50
+    new_xp_total = current_xp - xp_taken
+
+    #while loop to take all the levels needed
+    while new_xp_total < 0:
+        current_level = current_level - 1
+
+        if(current_level < 1):
+            current_level = 1
+            new_xp_total = 0
+            break
+
+        new_xp_total = new_xp_total + next_level_required_xp
+        user.level = str(current_level)
+        user.currentxp = str(new_xp_total)
+        next_level_required_xp = (current_level-1)*10 + 50
+
+    user.level = str(current_level)
+    user.currentxp = str(new_xp_total)
+
+
 def getDBUser(userID): #gets the database user based on the user's ID
     db_user = None #return none if we can't find a user
     try: #try to find user in database using id
@@ -963,6 +1195,23 @@ def getDBUser(userID): #gets the database user based on the user's ID
     except sqlalchemy.orm.exc.MultipleResultsFound:
         print('Multiple users found, something is really broken!')
     return db_user #this value will be None or a valid user, make sure to check
+
+def getDBContest(number): #gets the database user based on the user's ID
+    db_contest = None
+    try: #try to find user in database using id
+        db_contest = session.query(Contest).filter(Contest.id == number).one()
+    except sqlalchemy.orm.exc.NoResultFound:
+        print('No user found, probably not registered')
+    except sqlalchemy.orm.exc.MultipleResultsFound:
+        print('Multiple users found, something is really broken!')
+    return db_contest
+
+def isNumber(num):
+    try:
+        int(num)
+        return True
+    except ValueError:
+        return False
 
 #do role update every 3 hours
 scheduler.add_job(roletask, 'cron', hour='1,4,7,10,13,16,19,21')
