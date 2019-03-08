@@ -60,10 +60,14 @@ if(live):
     serverName = 'The Art Plaza Extravaganza'
     botChannelName = 'bot-channel'
     submitChannels = ['236678008562384896', '302915168801783810', '241060721994104833', '313945720447303680']
+    adoreEmoji = "284820985767788554"
+    adminRole = "Admins"
 else:
     serverName = 'WhatsaTestServer'
     botChannelName = 'botspam'
     submitChannels = ['271516310314156042','284618270659575818','386395766505340939']
+    adoreEmoji = "316118272548274176"
+    adminRole = "Admins"
 ##########################
 
 
@@ -72,21 +76,22 @@ async def on_ready():
     global tapeServer
     global botChannel
     global adminRole
+    global adoreEmoji
     print('Bot Online.')
     print(client.user.name)
     print(client.user.id)
     print('------')
     #Store the server and the bot command channel
-    for s in client.servers:
-        if s.name == serverName:
-            tapeServer = s
-    for c in tapeServer.channels:
-        if c.name == botChannelName:
-            botChannel = c
+    tapeServer = discord.utils.find(lambda s: s.name == serverName, client.servers)
+    print("active server set to " + tapeServer.name)
+    botChannel = discord.utils.find(lambda c: c.name == botChannelName, tapeServer.channels)
+    print("bot channel set to " + botChannel.name)
     #admin role, admin actions require at least this role (or any with higher priority)
-    for r in tapeServer.roles:
-        if r.name == 'Admins':
-            adminRole = r
+    adminRole = discord.utils.find(lambda r: r.name == adminRole, tapeServer.roles)
+    print("admin role set to " + adminRole.name)
+    adoreEmoji = discord.utils.find(lambda e: e.id == adoreEmoji, tapeServer.emojis)
+    print("adore emoji set to " + adoreEmoji.name)
+    
 
 
 @client.event
@@ -98,7 +103,7 @@ async def on_reaction_add(reaction, user):
         userToUpdate = reaction.message.mentions[0].id
     try:
         if type(reaction.emoji) is discord.Emoji:
-            if reaction.emoji.id == "284820985767788554" and user.id != userToUpdate and (reaction.message.content.startswith("!submit") or reaction.message.content.startswith("!proxysubmit")):
+            if reaction.emoji.id == adoreEmoji.id and user.id != userToUpdate and (reaction.message.content.startswith("!submit") or reaction.message.content.startswith("!proxysubmit")):
                 print("reaction added " + user.name + " " + str(reaction.emoji))
                 #find user in database using id
                 db_user = session.query(User).filter(User.id == userToUpdate).one()
@@ -118,7 +123,7 @@ async def on_reaction_remove(reaction, user):
         userToUpdate = reaction.message.mentions[0].id
     try:
         if type(reaction.emoji) is discord.Emoji:
-            if reaction.emoji.id == "284820985767788554" and user.id != userToUpdate and (reaction.message.content.startswith("!submit") or reaction.message.content.startswith("!proxysubmit")):
+            if reaction.emoji.id == adoreEmoji.id and user.id != userToUpdate and (reaction.message.content.startswith("!submit") or reaction.message.content.startswith("!proxysubmit")):
                 print("reaction removed " + user.name + " " + str(reaction.emoji))
                 #find user in database using id
                 db_user = session.query(User).filter(User.id == userToUpdate).one()
@@ -154,6 +159,8 @@ async def on_message(message):
         already_registered = False
         #try to find user in database using id
         db_user = getDBUser(message.author.id)
+        serv = message.server
+        foundrole = discord.utils.find(lambda r: r.name == 'Artists', message.author.roles)
 
         #add a new user if there's no registered user
         if (db_user == None):
@@ -162,7 +169,6 @@ async def on_message(message):
             #add to session
             session.add(new_user)
             #give relevant roles
-            serv = message.server
             for rank in serv.roles:
                 if rank.name == "0+ Streak":
                     await client.add_roles(message.author, rank)
@@ -172,12 +178,17 @@ async def on_message(message):
             #commit session
             session.commit()
             await client.send_message(message.channel, "```diff\n+ Successfully registered!\n```")
+        elif (db_user != None and foundrole == None):
+            for rank in serv.roles:
+                if rank.name == "Artists":
+                    await client.add_roles(message.author, rank)
+            await client.send_message(message.channel, "```Markdown\n# You're registered, I'll give you your Artist role back!\n```")
         else:
             await client.send_message(message.channel, "```Markdown\n# You're already registered!\n```")
 
     elif message.content.lower().startswith('!help') and message.author != message.author.server.me:
         await client.send_message(message.channel,"```Markdown\n# Here's a quick little starter guide for all of you happy little artists wishing to participate.\n# !register will add you to our spreadsheet where we keep track of every submission you make\n# To submit content, drag and drop the file (.png, .gif, .jpg) into discord and add '!submit' as a comment to it.\n# If you'd like to submit via internet link, make sure you right click the image and select 'copy image location' and submit that URL using the !submit command.\n# The !timeleft command will let you know how much longer you have left to submit for the day!\n# To see your current scorecard, type !stats \n# To see your achievement status, type !ach\n# Having trouble figuring out what to draw? Override your role colour using !override <Role Number>\n# To turn on or off the PM warning system about your streak use the command !streakwarning on or !streakwarning off\n``` \n ```diff\n - For those of our older artists, you may access the nsfw channels by typing !nsfwjoin and you can hide those channels by typing !nsfwleave. \n - When submitting nsfwcontent please use the r18 channels respectively!!\n```")
-    elif message.content.lower().startswith('!stats') and message.author != message.author.server.me:
+    elif message.content.lower().startswith('!stats') and message.channel == botChannel and message.author != message.author.server.me:
         #try to find user in database using id
         db_user = getDBUser(message.author.id)
 
@@ -1023,6 +1034,9 @@ async def handleSubmit(message, userToUpdate, url):
                 session.commit()
                 print("finishing updating " + db_user.name + "'s stats")
                 await client.send_message(message.channel, "```diff\n+ @{0} Submission Successful! Score updated!\n+ {1}xp gained.```".format(userToUpdate.name,xp_gained))
+                #finally, add an adore to the submission
+                await client.add_reaction(message, adoreEmoji)
+                #finished
                 print("submit complete")
             else:
                 await client.send_message(message.channel, "```diff\n- Not a png, jpg, or gif file```")
