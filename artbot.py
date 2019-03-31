@@ -35,7 +35,6 @@ DBSession = sessionmaker(bind=engine)
 #create session
 session = DBSession() #session.commit() to store data, and session.rollback() to discard changes
 
-spreadsheet_schema = {"Discord Name":1,"Start Date":2,"Level":3,"Currency":4,"Streak":5,"Streak Expires":6,"Submitted Today?":7,"Raffle Prompt Submitted":8,"Week Team":9,"Month Team":10,"Referred By":11,"Prompts Added":12,"Current XP":13}
 months = {1:"January",2:"February",3:"March",4:"April",5:"May",6:"June",7:"July",8:"August",9:"September",10:"October",11:"November",12:"December"}
 nonach_roles = ["0+ Streak","5+ Streak","10+ Streak","15+ Streak","20+ Streak","25+ Streak","30+ Streak","60+ Streak","90+ Streak","120+ Streak","150+ Streak","200+ Streak","250+ Streak","300+ Streak","Admins","Raffle","Community Admins","Type !help for info","@everyone","NSFW Artist", "Artists", "Head Admins", "999+ Streak", "2000+ Streak", "Override (5+)", "Override (10+)", "Override (15+)", "Override (20+)", "Override (25+)", "Override (30+)", "Override (60+)", "Override (90+)", "Override (120+)", "Override (150+)", "Override (200+)", "Override (250+)", "Override (300+)"]
 override_roles = ["Override (5+)", "Override (10+)", "Override (15+)", "Override (20+)", "Override (25+)", "Override (30+)", "Override (60+)", "Override (90+)", "Override (120+)", "Override (150+)", "Override (200+)", "Override (250+)", "Override (300+)"]
@@ -187,7 +186,22 @@ async def on_message(message):
             await client.send_message(message.channel, "```Markdown\n# You're already registered!\n```")
 
     elif message.content.lower().startswith('!help') and message.author != message.author.server.me:
-        await client.send_message(message.channel,"```Markdown\n# Here's a quick little starter guide for all of you happy little artists wishing to participate.\n# !register will add you to our spreadsheet where we keep track of every submission you make\n# To submit content, drag and drop the file (.png, .gif, .jpg) into discord and add '!submit' as a comment to it.\n# If you'd like to submit via internet link, make sure you right click the image and select 'copy image location' and submit that URL using the !submit command.\n# The !timeleft command will let you know how much longer you have left to submit for the day!\n# To see your current scorecard, type !stats \n# To see your achievement status, type !ach\n# Having trouble figuring out what to draw? Override your role colour using !override <Role Number>\n# To turn on or off the PM warning system about your streak use the command !streakwarning on or !streakwarning off\n``` \n ```diff\n - For those of our older artists, you may access the nsfw channels by typing !nsfwjoin and you can hide those channels by typing !nsfwleave. \n - When submitting nsfwcontent please use the r18 channels respectively!!\n```")
+        helpString = """```Markdown
+# Here's a quick little starter guide for all of you happy little artists wishing to participate.
+# !register will add you to our spreadsheet where we keep track of every submission you make
+# To submit content, drag and drop the file (.png, .gif, .jpg) into discord and add '!submit' as a comment to it.
+# If you'd like to submit via internet link, make sure you right click the image and select 'copy image location' and submit that URL using the !submit command.
+# The !timeleft command will let you know how much longer you have left to submit for the day!
+# To see your current scorecard, type !stats 
+# To see your achievement status, type !ach
+# Override your role colour using !override [Role Number], or !override none to clear an active override.
+# To turn on or off the PM warning system about your streak use the command !streakwarning on or !streakwarning off.
+```
+```diff
+- For those of our older artists, you may access the nsfw channels by typing !nsfwjoin and you can hide those channels by typing !nsfwleave. 
+- When submitting nsfwcontent please use the r18 channels respectively!!
+```"""
+        await client.send_message(message.channel, helpString)
     elif message.content.lower().startswith('!stats') and message.channel == botChannel and message.author != message.author.server.me:
         #try to find user in database using id
         db_user = getDBUser(message.author.id)
@@ -472,13 +486,12 @@ async def on_message(message):
                 if(override_string in ["5","10","15","20","25","30","60","90","120","150","200","250","300"]):
                     roleName = "Override (" + override_string + "+)"
 
-
                 role = discord.utils.get(message.server.roles, name=roleName)
-                if(override_string.lower() == "none" or role != None):
+                if(override_string.lower() == "none" or override_string.lower() == "0" or role != None):
                     #get override roles to remove
                     orRoles = [r for r in message.author.roles if r.name.startswith("Override")]
 
-                    if(override_string.lower() == "none"):
+                    if(override_string.lower() == "none" or override_string.lower() == "0"):
                         #remove old roles
                         await client.remove_roles(message.author, *orRoles)
                         await client.send_message(message.channel,"```diff\n+Your Override has successfully been removed```")
