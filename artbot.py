@@ -35,6 +35,7 @@ DBSession = sessionmaker(bind=engine)
 #create session
 session = DBSession() #session.commit() to store data, and session.rollback() to discard changes
 
+spreadsheet_schema = {"Discord Name":1,"Start Date":2,"Level":3,"Currency":4,"Streak":5,"Streak Expires":6,"Submitted Today?":7,"Raffle Prompt Submitted":8,"Week Team":9,"Month Team":10,"Referred By":11,"Prompts Added":12,"Current XP":13}
 months = {1:"January",2:"February",3:"March",4:"April",5:"May",6:"June",7:"July",8:"August",9:"September",10:"October",11:"November",12:"December"}
 nonach_roles = ["0+ Streak","5+ Streak","10+ Streak","15+ Streak","20+ Streak","25+ Streak","30+ Streak","60+ Streak","90+ Streak","120+ Streak","150+ Streak","200+ Streak","250+ Streak","300+ Streak","Admins","Raffle","Community Admins","Type !help for info","@everyone","NSFW Artist", "Artists", "Head Admins", "999+ Streak", "2000+ Streak", "Override (5+)", "Override (10+)", "Override (15+)", "Override (20+)", "Override (25+)", "Override (30+)", "Override (60+)", "Override (90+)", "Override (120+)", "Override (150+)", "Override (200+)", "Override (250+)", "Override (300+)"]
 override_roles = ["Override (5+)", "Override (10+)", "Override (15+)", "Override (20+)", "Override (25+)", "Override (30+)", "Override (60+)", "Override (90+)", "Override (120+)", "Override (150+)", "Override (200+)", "Override (250+)", "Override (300+)"]
@@ -54,19 +55,15 @@ logging.basicConfig(level = logging.INFO)
 client = discord.Client()
 
 ###LIVE/DEBUG SETTINGS####
-live = True
+live = False
 if(live):
     serverName = 'The Art Plaza Extravaganza'
     botChannelName = 'bot-channel'
     submitChannels = ['236678008562384896', '302915168801783810', '241060721994104833', '313945720447303680']
-    adoreEmoji = "284820985767788554"
-    adminRole = "Admins"
 else:
     serverName = 'Marsh Palace'
     botChannelName = 'bot-testing'
     submitChannels = ['271516310314156042','284618270659575818','386395766505340939','317414355501187072']
-    # adoreEmoji = "316118272548274176"
-    adminRole = "Admins"
 ##########################
 
 
@@ -75,22 +72,21 @@ async def on_ready():
     global tapeServer
     global botChannel
     global adminRole
-    global adoreEmoji
     print('Bot Online.')
     print(client.user.name)
     print(client.user.id)
     print('------')
     #Store the server and the bot command channel
-    tapeServer = discord.utils.find(lambda s: s.name == serverName, client.servers)
-    print("active server set to " + tapeServer.name)
-    botChannel = discord.utils.find(lambda c: c.name == botChannelName, tapeServer.channels)
-    print("bot channel set to " + botChannel.name)
+    for s in client.servers:
+        if s.name == serverName:
+            tapeServer = s
+    for c in tapeServer.channels:
+        if c.name == botChannelName:
+            botChannel = c
     #admin role, admin actions require at least this role (or any with higher priority)
-    adminRole = discord.utils.find(lambda r: r.name == adminRole, tapeServer.roles)
-    print("admin role set to " + adminRole.name)
-    adoreEmoji = discord.utils.find(lambda e: e.id == adoreEmoji, tapeServer.emojis)
-    print("adore emoji set to " + adoreEmoji.name)
-    
+    for r in tapeServer.roles:
+        if r.name == 'Admins':
+            adminRole = r
 
 
 @client.event
@@ -102,7 +98,7 @@ async def on_reaction_add(reaction, user):
         userToUpdate = reaction.message.mentions[0].id
     try:
         if type(reaction.emoji) is discord.Emoji:
-            if reaction.emoji.id == adoreEmoji.id and user.id != userToUpdate and (reaction.message.content.startswith("!submit") or reaction.message.content.startswith("!proxysubmit")):
+            if reaction.emoji.id == "284820985767788554" and user.id != userToUpdate and (reaction.message.content.startswith("!submit") or reaction.message.content.startswith("!proxysubmit")):
                 print("reaction added " + user.name + " " + str(reaction.emoji))
                 #find user in database using id
                 db_user = session.query(User).filter(User.id == userToUpdate).one()
@@ -122,7 +118,7 @@ async def on_reaction_remove(reaction, user):
         userToUpdate = reaction.message.mentions[0].id
     try:
         if type(reaction.emoji) is discord.Emoji:
-            if reaction.emoji.id == adoreEmoji.id and user.id != userToUpdate and (reaction.message.content.startswith("!submit") or reaction.message.content.startswith("!proxysubmit")):
+            if reaction.emoji.id == "284820985767788554" and user.id != userToUpdate and (reaction.message.content.startswith("!submit") or reaction.message.content.startswith("!proxysubmit")):
                 print("reaction removed " + user.name + " " + str(reaction.emoji))
                 #find user in database using id
                 db_user = session.query(User).filter(User.id == userToUpdate).one()
@@ -152,14 +148,13 @@ async def on_message(message):
                     pass
         else:
             await client.send_message(message.channel, "`Whoopsies, you can't submit in this channel!`")
+
     elif message.content.lower().startswith('!register') and message.author != message.author.server.me:
         curdate = datetime.utcnow()
         today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
         already_registered = False
         #try to find user in database using id
         db_user = getDBUser(message.author.id)
-        serv = message.server
-        foundrole = discord.utils.find(lambda r: r.name == 'Artists', message.author.roles)
 
         #add a new user if there's no registered user
         if (db_user == None):
@@ -168,41 +163,23 @@ async def on_message(message):
             #add to session
             session.add(new_user)
             #give relevant roles
+            serv = message.server
             for rank in serv.roles:
                 if rank.name == "0+ Streak":
                     await client.add_roles(message.author, rank)
             for rank in serv.roles:
                 if rank.name == "Artists":
                     await client.add_roles(message.author, rank)
+
             #commit session
             session.commit()
             await client.send_message(message.channel, "```diff\n+ Successfully registered!\n```")
-        elif (db_user != None and foundrole == None):
-            for rank in serv.roles:
-                if rank.name == "Artists":
-                    await client.add_roles(message.author, rank)
-            await client.send_message(message.channel, "```Markdown\n# You're registered, I'll give you your Artist role back!\n```")
         else:
             await client.send_message(message.channel, "```Markdown\n# You're already registered!\n```")
 
     elif message.content.lower().startswith('!help') and message.author != message.author.server.me:
-        helpString = """```Markdown
-# Here's a quick little starter guide for all of you happy little artists wishing to participate.
-# !register will add you to our spreadsheet where we keep track of every submission you make
-# To submit content, drag and drop the file (.png, .gif, .jpg) into discord and add '!submit' as a comment to it.
-# If you'd like to submit via internet link, make sure you right click the image and select 'copy image location' and submit that URL using the !submit command.
-# The !timeleft command will let you know how much longer you have left to submit for the day!
-# To see your current scorecard, type !stats 
-# To see your achievement status, type !ach
-# Override your role colour using !override [Role Number], or !override none to clear an active override.
-# To turn on or off the PM warning system about your streak use the command !streakwarning on or !streakwarning off.
-```
-```diff
-- For those of our older artists, you may access the nsfw channels by typing !nsfwjoin and you can hide those channels by typing !nsfwleave. 
-- When submitting nsfwcontent please use the r18 channels respectively!!
-```"""
-        await client.send_message(message.channel, helpString)
-    elif message.content.lower().startswith('!stats') and message.channel == botChannel and message.author != message.author.server.me:
+        await client.send_message(message.channel,"```Markdown\n# Here's a quick little starter guide for all of you happy little artists wishing to participate.\n# !register will add you to our spreadsheet where we keep track of every submission you make\n# To submit content, drag and drop the file (.png, .gif, .jpg) into discord and add '!submit' as a comment to it.\n# If you'd like to submit via internet link, make sure you right click the image and select 'copy image location' and submit that URL using the !submit command.\n# The !timeleft command will let you know how much longer you have left to submit for the day!\n# To see your current scorecard, type !stats \n# To see your achievement status, type !ach\n# Having trouble figuring out what to draw? Override your role colour using !override <Role Number>\n# To turn on or off the PM warning system about your streak use the command !streakwarning on or !streakwarning off\n``` \n ```diff\n - For those of our older artists, you may access the nsfw channels by typing !nsfwjoin and you can hide those channels by typing !nsfwleave. \n - When submitting nsfwcontent please use the r18 channels respectively!!\n```")
+    elif message.content.lower().startswith('!stats') and message.author != message.author.server.me:
         #try to find user in database using id
         db_user = getDBUser(message.author.id)
 
@@ -211,8 +188,8 @@ async def on_message(message):
 
         #if we found the user in our spreadsheet
         if (db_user != None):
-
-            #checking for the quest
+            #update the stats quest
+            #method to update a user based on id and quest
             if(db_quester != None):
                 db_quester.progress = 1
 
@@ -494,12 +471,13 @@ async def on_message(message):
                 if(override_string in ["5","10","15","20","25","30","60","90","120","150","200","250","300"]):
                     roleName = "Override (" + override_string + "+)"
 
+
                 role = discord.utils.get(message.server.roles, name=roleName)
-                if(override_string.lower() == "none" or override_string.lower() == "0" or role != None):
+                if(override_string.lower() == "none" or role != None):
                     #get override roles to remove
                     orRoles = [r for r in message.author.roles if r.name.startswith("Override")]
 
-                    if(override_string.lower() == "none" or override_string.lower() == "0"):
+                    if(override_string.lower() == "none"):
                         #remove old roles
                         await client.remove_roles(message.author, *orRoles)
                         await client.send_message(message.channel,"```diff\n+Your Override has successfully been removed```")
@@ -642,10 +620,10 @@ async def on_message(message):
     elif message.content.lower() == "!reset" and (message.author.top_role >= adminRole):
         await client.send_message(message.channel,"Resetting BotRoss (assuming Ciy and Whatsa did their job right), bye byeee~")
         sys.exit()
-    # elif message.content.lower().startswith("!embedtest") and (message.author.top_role >= adminRole):
-        # testembed.set_thumbnail(url=message.author.avatar_url)
-        # testembed.add_field(name="Test_Field",value="Ciy is a butt.",inline=True)
-        # await client.send_message(message.channel, embed=testembed)
+    elif message.content.lower().startswith("!embedtest") and (message.author.top_role >= adminRole):
+        testembed.set_thumbnail(url=message.author.avatar_url)
+        testembed.add_field(name="Test_Field",value="Ciy is a butt.",inline=True)
+        await client.send_message(message.channel, embed=testembed)
     elif message.content.lower().startswith("!getraffle") and (message.author.top_role >= adminRole):
         raffleString = "Raffle Submissions!\n==================="
         members = session.query(User).all()
@@ -743,7 +721,7 @@ async def on_message(message):
                 except:
                     print("{0} warning mode unchanged".format(message.author.name))
         else:
-             await client.send_message(message.channel, "```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
+            await client.send_message(message.channel, "```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
 
     #admin command - give xp or take xp
     # new ex. !xp 300 @mentioned users
@@ -766,7 +744,7 @@ async def on_message(message):
                     db_user = session.query(User).filter(User.id == person.id).one()
                     await addXP(db_user,xp_amount)
                     xp_receivers = xp_receivers + " " + person.name
-                    await client.send_message(message.channel,"```Markdown\n# @{0} Level Up! You are now level {1}!\n```".format(person.name,db_user.level))   
+                    await client.send_message(message.channel,"```Markdown\n# @{0} Level Up! You are now level {1}!\n```".format(person.name,db_user.level))
 
                 session.commit()
                 await client.send_message(message.channel, "```Markdown\n# {0} experience points given to{1}\n```".format(xp_amount,xp_receivers))
@@ -778,9 +756,9 @@ async def on_message(message):
                     db_user = session.query(User).filter(User.id == person.id).one()
                     await subXP(db_user,xp_amount)
                     xp_receivers = xp_receivers + " " + person.name
-                    await client.send_message(message.channel,"```Markdown\n# @{0} You are now level {1}!\n```".format(person.name,db_user.level))   
+                    await client.send_message(message.channel,"```Markdown\n# @{0} You are now level {1}!\n```".format(person.name,db_user.level))
 
-                session.commit()        
+                session.commit()
                 await client.send_message(message.channel, "```Markdown\n# {0} experience points taken from{1}\n```".format(xp_amount,xp_receivers))
 
             else:
@@ -788,7 +766,7 @@ async def on_message(message):
 
         else:
             await client.send_message(message.channel, "```Markdown\n# please enter in the command as !xp add/sub (amount of xp) (mentions of users)\n```")
-    
+
     #admin command
     #fully reset use stats
     elif message.content.lower().startswith('!fullreset') and message.author.top_role >= adminRole:
@@ -803,13 +781,14 @@ async def on_message(message):
             db_user.current_xp = 0
             db_user.raffle = False
             db_user.submitted = False
+            db_user.questdecay = 0
             session.commit()
             await client.send_message(message.channel,"```Markdown\n#{0} stats have been fully reset\n```".format(receiver.name))
         except:
             await client.send_message(message.channel,"```Markdown\n#Something went wrong.\n```")
             session.rollback()
 
-    
+
     # add in extension
     elif message.content.lower().startswith('!contest') and len(message.content.lower()) > 8  and message.author.top_role >= adminRole:
 
@@ -906,11 +885,34 @@ async def on_message(message):
             if(db_contest.mode == 2):
                 await client.send_message(message.channel, "`The contest will run for {0} Days, {1} Hours, {2} Minutes, {3} Seconds`".format(d_days, d_hour, d_min, d_sec))
         else:
-            await client.send_message(message.channel, "```Markdown\n#There is no contest data!\n```")            
+            await client.send_message(message.channel, "```Markdown\n#There is no contest data!\n```")
 
     elif message.content.lower().startswith('!runhouse') and message.author != message.author.server.me:
         await client.send_message(message.channel, "run housekeeping for testing\n")
         await housekeeper()
+
+    ##    elif message.content.lower().startswith('!quest') and message.author != message.author.server.me:
+    ##        filetypes = [".gif",".jpg",".jpeg",".png"]
+    ##        if ("https://" in message.content.lower() or "http://" in message.content.lower()) and any(u in message.content.lower() for u in filetypes) :
+    ##            # do linksubmit
+    ##            await linkSubmit(message, message.author)
+    ##        else:
+    ##            try:
+    ##                #normal submit.
+    ##                await normalSubmit(message, message.author)
+    ##            except:
+    ##                pass
+    ##
+    ##        db_user = getDBUser(message.author.id)
+    ##        questnumber = db_user.questdecay + 1
+    ##        db_user.questdecay = questnumber
+    ##        session.commit()
+
+    #log decrease
+    # elif message.content.lower().startswith('!log') and message.author != message.author.server.me:
+    #     db_user = getDBUser(message.author.id)
+    #     xp_gained = (1/(np.log(math.exp(db_user.questdecay)))) * 100
+    #     await client.send_message(message.channel, "the decay for quests is {0}\n".format(db_user.questdecay))
 
     elif message.content.lower().startswith('!questing') and message.author != message.author.server.me:
         #creates table for that user's quests
@@ -952,7 +954,12 @@ async def on_message(message):
             embedQ.add_field(name=qName, value=qTask, inline=False)
 
         await client.send_message(user, embed=embedQ)
-            
+
+
+
+
+
+
 
 async def updateRoles(serv):
     #get all rows and put into memory
@@ -1019,6 +1026,7 @@ async def linkSubmit(message, userToUpdate):
     print('link submitting for ' + str(userToUpdate.name))
     print(str(userToUpdate.name) + "'s url - " + url[1])
     print('link submitting for ' + str(userToUpdate.name))
+    #goes to quest or submit handlers
     await handleSubmit(message, userToUpdate, url[1])
 
 async def normalSubmit(message, userToUpdate):
@@ -1030,8 +1038,6 @@ async def normalSubmit(message, userToUpdate):
 
     print('normal submitting for ' + str(userToUpdate.name))
     await handleSubmit(message, userToUpdate, url)
-
-
 
 
 async def handleSubmit(message, userToUpdate, url):
@@ -1060,9 +1066,9 @@ async def handleSubmit(message, userToUpdate, url):
         else:
             if url.lower().endswith('.png') or url.lower().endswith('.jpg') or url.lower().endswith('.gif') or url.lower().endswith('.jpeg'):
                 #if message.channel.id == channel_ids['class_2']:
-                    #print('starting file download')
-                    #os.system('wget {0} -P {1}'.format(url, filepath))
-                    #print('finishing file download')
+                #print('starting file download')
+                #os.system('wget {0} -P {1}'.format(url, filepath))
+                #print('finishing file download')
 
                 #update the submit quest
                 db_quester = getDBQuestMember(message.author.id,1)
@@ -1102,9 +1108,6 @@ async def handleSubmit(message, userToUpdate, url):
                 session.commit()
                 print("finishing updating " + db_user.name + "'s stats")
                 await client.send_message(message.channel, "```diff\n+ @{0} Submission Successful! Score updated!\n+ {1}xp gained.```".format(userToUpdate.name,xp_gained))
-                #finally, add an adore to the submission
-                await client.add_reaction(message, adoreEmoji)
-                #finished
                 print("submit complete")
             else:
                 await client.send_message(message.channel, "```diff\n- Not a png, jpg, or gif file```")
@@ -1176,6 +1179,7 @@ async def housekeeper():
                 except:
                     print('couldn\'t  send decay message')
 
+
         #Checks for quest completion here
         await checkQuests(curr_member.id)
 
@@ -1244,7 +1248,7 @@ async def addXP(user,xp_amount):
         next_level_required_xp = current_level*10 + 50
 
     user.level = str(current_level)
-    user.currentxp = str(new_xp_total) 
+    user.currentxp = str(new_xp_total)
 
 #take away xp, accounts for levels
 async def subXP(user,xp_amount):
