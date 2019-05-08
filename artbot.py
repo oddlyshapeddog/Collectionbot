@@ -17,7 +17,7 @@ from sqlalchemy import update
 import time
 from datetime import date, timedelta, time, datetime
 #declaration for User class is in here
-from create_databases import Base, User, Contest
+from create_databases import Base, User, Contest, QuestsMembers, QuestsList
 
 #scheduling stuff
 from pytz import utc
@@ -62,10 +62,10 @@ if(live):
     adoreEmoji = "284820985767788554"
     adminRole = "Admins"
 else:
-    serverName = 'WhatsaTestServer'
-    botChannelName = 'botspam'
-    submitChannels = ['271516310314156042','284618270659575818','386395766505340939']
-    adoreEmoji = "316118272548274176"
+    serverName = 'Marsh Palace'
+    botChannelName = 'bot-testing'
+    submitChannels = ['271516310314156042','284618270659575818','386395766505340939','317414355501187072']
+    # adoreEmoji = "316118272548274176"
     adminRole = "Admins"
 ##########################
 
@@ -206,8 +206,16 @@ async def on_message(message):
         #try to find user in database using id
         db_user = getDBUser(message.author.id)
 
+        #quest check
+        db_quester = getDBQuestMember(message.author.id,0)
+
         #if we found the user in our spreadsheet
         if (db_user != None):
+
+            #checking for the quest
+            if(db_quester != None):
+                db_quester.progress = 1
+
             #then extract individual stats for simplicity
             user_name = db_user.name
             current_score = db_user.totalsubmissions
@@ -634,10 +642,10 @@ async def on_message(message):
     elif message.content.lower() == "!reset" and (message.author.top_role >= adminRole):
         await client.send_message(message.channel,"Resetting BotRoss (assuming Ciy and Whatsa did their job right), bye byeee~")
         sys.exit()
-    elif message.content.lower().startswith("!embedtest") and (message.author.top_role >= adminRole):
-        testembed.set_thumbnail(url=message.author.avatar_url)
-        testembed.add_field(name="Test_Field",value="Ciy is a butt.",inline=True)
-        await client.send_message(message.channel, embed=testembed)
+    # elif message.content.lower().startswith("!embedtest") and (message.author.top_role >= adminRole):
+        # testembed.set_thumbnail(url=message.author.avatar_url)
+        # testembed.add_field(name="Test_Field",value="Ciy is a butt.",inline=True)
+        # await client.send_message(message.channel, embed=testembed)
     elif message.content.lower().startswith("!getraffle") and (message.author.top_role >= adminRole):
         raffleString = "Raffle Submissions!\n==================="
         members = session.query(User).all()
@@ -903,6 +911,47 @@ async def on_message(message):
     elif message.content.lower().startswith('!runhouse') and message.author != message.author.server.me:
         await client.send_message(message.channel, "run housekeeping for testing\n")
         await housekeeper()
+
+    elif message.content.lower().startswith('!questing') and message.author != message.author.server.me:
+        #creates table for that user's quests
+        for x in range(5):
+            new_quester = QuestsMembers(usrId = message.author.id, questId = x, name=message.author.name,completed = False, progress = 0)
+            session.add(new_quester)
+        session.commit()
+
+    elif message.content.lower().startswith('!test') and message.author != message.author.server.me:
+        #see if they are in the quest table
+        db_quester = getDBQuestMember(message.author.id,0)
+
+        if (db_quester == None):
+            await client.send_message(message.channel, "nothing")
+        else:
+            await client.send_message(message.channel, "the user {0} has been found!\n".format(db_quester.usrId))
+
+    elif message.content.lower().startswith('!create') and message.author != message.author.server.me:
+        # this is how users sign up for quests
+        await createQuestTable()
+
+    elif message.content.lower().startswith('!resq') and message.author != message.author.server.me:
+        # this is how users sign up for quests
+        for x in range(5):
+            db_quester = getDBQuestMember(message.author.id,x)
+            db_quester.completed = 0
+            db_quester.progress = 0
+            session.commit()
+        #commit session
+        await client.send_message(message.channel, "nothing")
+    elif message.content.lower().startswith('!board') and message.author != message.author.server.me:
+
+        user = discord.utils.get(client.get_all_members(), id=str(message.author.id))
+        embedQ = discord.Embed(color=0xFF85FF)
+        for x in range(5):
+            db_questitem = getDBQuestItem(x)
+            qName = "**QUEST {0}**".format(x)
+            qTask = db_questitem.description
+            embedQ.add_field(name=qName, value=qTask, inline=False)
+
+        await client.send_message(user, embed=embedQ)
             
 
 async def updateRoles(serv):
@@ -1014,6 +1063,12 @@ async def handleSubmit(message, userToUpdate, url):
                     #print('starting file download')
                     #os.system('wget {0} -P {1}'.format(url, filepath))
                     #print('finishing file download')
+
+                #update the submit quest
+                db_quester = getDBQuestMember(message.author.id,1)
+                if(db_quester != None):
+                    db_quester.progress = 1
+
                 #update all the stats
                 newscore = db_user.totalsubmissions+1
                 newcurrency = db_user.currency+10
@@ -1120,6 +1175,10 @@ async def housekeeper():
                     await client.send_message(user,"Your streak has decayed by {0} points! Your streak is now {1}.\nIf you want to disable these warning messages then enter the command streakwarning off in the #bot-channel".format(str(pointReduce),str(curr_member.streak)))
                 except:
                     print('couldn\'t  send decay message')
+
+        #Checks for quest completion here
+        await checkQuests(curr_member.id)
+
     #commit all changes to the sheet at once
     session.commit()
     print("housekeeping finished")
@@ -1212,6 +1271,61 @@ async def subXP(user,xp_amount):
     user.level = str(current_level)
     user.currentxp = str(new_xp_total)
 
+async def createQuestTable():
+
+    #stats tutorial
+    if(getDBQuestItem(0) == None):
+        new_quest = QuestsList(questId = 0, description = "Use the !stats command once", completion = 1, award = 50)
+        session.add(new_quest)
+    #submit tutorial
+    if(getDBQuestItem(1) == None):
+        new_quest = QuestsList(questId = 1, description = "Successfully submit a piece to a submission channel", completion = 1, award = 50)
+        session.add(new_quest)
+    #have 1 overall submit
+    if(getDBQuestItem(2) == None):
+        new_quest = QuestsList(questId = 2, description = "Submit 1 piece of art overall", completion = 1, award = 100)
+        session.add(new_quest)
+    #have 10 overall submits
+    if(getDBQuestItem(3) == None):
+        new_quest = QuestsList(questId = 3, description = "Submit 10 pieces of art overall", completion = 10, award = 500)
+        session.add(new_quest)
+    #attain a 5+streak highscore
+    if(getDBQuestItem(4) == None):
+        new_quest = QuestsList(questId = 4, description = "Attain a streak highscore of 5", completion = 5, award = 100)
+        session.add(new_quest)
+    #attain a 10+streak highscore
+    if(getDBQuestItem(5) == None):
+        new_quest = QuestsList(questId = 5, description = "Attain a streak highscore of 10", completion = 10, award = 1000)
+        session.add(new_quest)
+    session.commit()
+
+async def checkQuests(usrId):
+
+    #checks through all quests per user
+    for x in range(6):
+        await checkQuestCompletion(usrId,x)
+
+
+async def checkQuestCompletion(usrId,questId):
+
+    db_quester = getDBQuestMember(usrId,questId)
+    db_questitem = getDBQuestItem(questId)
+
+    if(db_quester != None):
+
+        if(db_quester.completed == False and db_questitem.completion == db_quester.progress):
+            await client.send_message(botChannel,"<@{1}>, you have completed quest {0}!\n`{2}`".format(str(questId),usrId,db_questitem.description))
+            db_quester.completed = True
+            db_user = session.query(User).filter(User.id == usrId).one()
+            await addXP(db_user,db_questitem.award)
+
+    else:
+
+        print('quest for user not found')
+
+    session.commit()
+
+
 
 def getDBUser(userID): #gets the database user based on the user's ID
     db_user = None #return none if we can't find a user
@@ -1233,6 +1347,26 @@ def getDBContest(number): #gets the database user based on the user's ID
         print('Multiple users found, something is really broken!')
     return db_contest
 
+def getDBQuestMember(number,quest): #gets the database user based on the user's ID and the quest number
+    db_questmember = None
+    try: #try to find user in database using id
+        db_questmember = session.query(QuestsMembers).filter(QuestsMembers.usrId == number).filter(QuestsMembers.questId == quest).one()
+    except sqlalchemy.orm.exc.NoResultFound:
+        print('No user found, probably not registered')
+    except sqlalchemy.orm.exc.MultipleResultsFound:
+        print('Multiple users found, something is really broken!')
+    return db_questmember
+
+def getDBQuestItem(number): #gets the database user based on the user's ID
+    db_questitem = None
+    try: #try to find user in database using id
+        db_questitem = session.query(QuestsList).filter(QuestsList.questId == number).one()
+    except sqlalchemy.orm.exc.NoResultFound:
+        print('No user found, probably not registered')
+    except sqlalchemy.orm.exc.MultipleResultsFound:
+        print('Multiple users found, something is really broken!')
+    return db_questitem
+
 def isNumber(num):
     try:
         int(num)
@@ -1248,4 +1382,4 @@ scheduler.start()
 if(live):
     client.run('') #botross account
 else:
-    client.run('') #whatsa test account
+    client.run('MzE3NDEyNDUzMDIzNjEyOTMw.DAjh9A.VabRF3enL-ogfkjlbbJOfU9657s') #marsh test account
