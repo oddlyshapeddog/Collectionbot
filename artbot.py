@@ -36,7 +36,7 @@ DBSession = sessionmaker(bind=engine)
 session = DBSession() #session.commit() to store data, and session.rollback() to discard changes
 
 #total number of quests
-quest_amount = 23
+quest_amount = 28
 
 spreadsheet_schema = {"Discord Name":1,"Start Date":2,"Level":3,"Currency":4,"Streak":5,"Streak Expires":6,"Submitted Today?":7,"Raffle Prompt Submitted":8,"Week Team":9,"Month Team":10,"Referred By":11,"Prompts Added":12,"Current XP":13}
 months = {1:"January",2:"February",3:"March",4:"April",5:"May",6:"June",7:"July",8:"August",9:"September",10:"October",11:"November",12:"December"}
@@ -217,6 +217,7 @@ async def on_message(message):
             #method to update a user based on id and quest
             if(db_quester != None):
                 db_quester.progress = 1
+                await checkQuestCompletion(message.author.id,0)
 
             #then extract individual stats for simplicity
             user_name = db_user.name
@@ -971,28 +972,52 @@ async def on_message(message):
     elif message.content.lower().startswith('!board') and message.author != message.author.guild.me:
         db_quester = getDBQuestMember(message.author.id,0)
         db_user = getDBUser(message.author.id)
+        parse = message.content.split(" ")
+
         if(db_user == None):
             await message.channel.send("```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
         elif(db_quester == None):
             await message.channel.send("```diff\n- I couldn't find your name on the quest board. Are you sure you're signed up? If you are, contact an admin immediately.\n```")
         else:
 
-            # use split command to check for number and correspond that with a quest
-            user = discord.utils.get(client.get_all_members(), id=message.author.id)
-            await message.channel.send( "```diff\n+ Please wait as we send you the quest progress data...\n```")
-            for x in range(quest_amount):
+            if(len(parse) > 1 and isNumber(parse[1])):
+                item = parse[1]
+                user = discord.utils.get(client.get_all_members(), id=message.author.id)
+                await message.channel.send( "```diff\n+ Please wait as we send you the quest progress data...\n```")
                 embedQ = discord.Embed(color=0xFF85FF)
-                db_questitem = getDBQuestItem(x)
-                db_quester = getDBQuestMember(message.author.id,x)
-                qName = "__**QUEST {0}**__".format(x)
-                qTask = db_questitem.description
-                qProgress = db_quester.progress
-                qGoal = db_questitem.completion
-                embedQ.add_field(name=qName, value=qTask, inline=False)
-                embedQ.add_field(name='Your current progress', value=qProgress, inline=False)
-                embedQ.add_field(name='Amount needed', value=qGoal, inline=False)
-                await user.send(embed=embedQ)
-            await message.channel.send( "```diff\n+ Your progress on quests hass been sent!\n```")
+                db_questitem = getDBQuestItem(item)
+                db_quester = getDBQuestMember(message.author.id,item)
+                if(db_questitem != None):
+                    qName = "__**QUEST {0}**__".format(item)
+                    qTask = db_questitem.description
+                    qProgress = db_quester.progress
+                    qGoal = db_questitem.completion
+                    embedQ.add_field(name=qName, value=qTask, inline=False)
+                    embedQ.add_field(name='Your current progress', value=qProgress, inline=False)
+                    embedQ.add_field(name='Amount needed', value=qGoal, inline=False)
+                    await user.send(embed=embedQ)
+                    await message.channel.send( "```diff\n+ Your progress on quests hass been sent!\n```")
+                else:
+                    await message.channel.send( "```diff\n+ Quest #{0} is not a valid quest, please refer back to the quest board for available quests!\n```".format(item))
+            elif(len(parse) > 1 and str(parse[1]).lower() == "all"):
+                # use split command to check for number and correspond that with a quest
+                user = discord.utils.get(client.get_all_members(), id=message.author.id)
+                await message.channel.send( "```diff\n+ Please wait as we send you the quest progress data...\n```")
+                for x in range(quest_amount):
+                    embedQ = discord.Embed(color=0xFF85FF)
+                    db_questitem = getDBQuestItem(x)
+                    db_quester = getDBQuestMember(message.author.id,x)
+                    qName = "__**QUEST {0}**__".format(x)
+                    qTask = db_questitem.description
+                    qProgress = db_quester.progress
+                    qGoal = db_questitem.completion
+                    embedQ.add_field(name=qName, value=qTask, inline=False)
+                    embedQ.add_field(name='Your current progress', value=qProgress, inline=False)
+                    embedQ.add_field(name='Amount needed', value=qGoal, inline=False)
+                    await user.send(embed=embedQ)
+                await message.channel.send( "```diff\n+ Your progress on quests hass been sent!\n```")
+            else:
+                await message.channel.send( "```diff\n+ Please enter in the board command with the number of a quest or \"all\"!\n```")
 
 async def updateRoles(serv):
     #get all rows and put into memory
@@ -1108,6 +1133,7 @@ async def handleSubmit(message, userToUpdate, url):
                 db_quester = getDBQuestMember(message.author.id,1)
                 if(db_quester != None):
                     db_quester.progress = 1
+                    await checkQuestCompletion(message.author.id,1)
 
                 #update all the stats
                 newscore = db_user.totalsubmissions+1
@@ -1215,6 +1241,40 @@ async def housekeeper():
                 except:
                     print('couldn\'t  send decay message')
 
+        # raffle check
+        dbQuester = getDBQuestMember(curr_member.id,2)
+        if(dbQuester != None and dbQuester.completed == False and curr_member.raffle == True):
+            dbQuester.progress = 1
+
+        # submit x amount of pieces quests
+        for x in range(3,9):
+            dbQuester = getDBQuestMember(curr_member.id,x)
+            if(dbQuester != None and dbQuester.completed == False):
+                dbQuester.progress = curr_member.totalsubmissions
+
+        # attain x amount of streak score
+        for x in range(10,22):
+            dbQuester = getDBQuestMember(curr_member.id,x)
+            if(dbQuester != None and dbQuester.completed == False):
+                dbQuester.progress = curr_member.highscore
+
+
+
+        # this isnt working for god knows why
+        # update dailies here (23-27)
+        for x in range(23,27):
+            dbQuester = getDBQuestMember(curr_member.id,x)
+            if(dbQuester != None and dbQuester.completed == False):
+                if(curr_member.submitted == 1):
+                    print("REACHED")
+                # elif(dbQuester.progress > 0 and curr_member.submitted == True):
+                #     print("2")
+                #     dbQuester.progress = dbQuester.progress + 1
+                # elif(dbQuester.progress > 0 and curr_member.submitted == False):
+                #     print("3")
+                #     dbQuester.progress = 0
+                else:
+                    print("FAILURE")
 
         #Checks for quest completion here
         await checkQuests(curr_member.id)
@@ -1415,16 +1475,37 @@ async def createQuestTable():
         session.add(new_quest)
 
     #time based quests (submitting daily for x time)
-
-
+    if(getDBQuestItem(23) == None):
+        new_quest = QuestsList(questId = 23, description = "Submit daily for 7 days", completion = 7, award = 100)
+        session.add(new_quest)
+    if(getDBQuestItem(24) == None):
+        new_quest = QuestsList(questId = 24, description = "Submit daily for 30 days", completion = 30, award = 100)
+        session.add(new_quest)
+    if(getDBQuestItem(25) == None):
+        new_quest = QuestsList(questId = 25, description = "Submit daily for 100 days", completion = 100, award = 100)
+        session.add(new_quest)
+    if(getDBQuestItem(26) == None):
+        new_quest = QuestsList(questId = 26, description = "Submit daily for 200 days", completion = 200, award = 100)
+        session.add(new_quest)
+    if(getDBQuestItem(27) == None):
+        new_quest = QuestsList(questId = 27, description = "Submit daily for 365 days", completion = 365, award = 100)
+        session.add(new_quest)
     session.commit()
 
 async def checkQuests(usrId):
 
     #checks through all quests per user
-    for x in range(6):
+    for x in range(quest_amount):
         await checkQuestCompletion(usrId,x)
 
+
+async def resetQuestProgress(usrId,questId):
+
+    db_quester = getDBQuestMember(usrId,questId)
+    if(db_quester != None):
+        db_quester.completed = 0
+        db_quester.progress = 0
+        session.commit()
 
 async def checkQuestCompletion(usrId,questId):
 
@@ -1433,7 +1514,7 @@ async def checkQuestCompletion(usrId,questId):
 
     if(db_quester != None):
 
-        if(db_quester.completed == False and db_questitem.completion == db_quester.progress):
+        if(db_quester.completed == False and db_quester.progress >= db_questitem.completion):
             await botChannel.send("<@{1}>, you have completed quest {0}!\n`{2}`".format(str(questId),usrId,db_questitem.description))
             db_quester.completed = True
             db_user = session.query(User).filter(User.id == usrId).one()
