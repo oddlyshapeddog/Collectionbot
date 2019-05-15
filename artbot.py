@@ -1190,11 +1190,6 @@ async def housekeeper():
     members = session.query(User).all()
     print("Housekeeping on " + str(len(members)) + " rows on " + today)
 
-    #reset all member's submitted status
-    stmt = update(User).values(submitted=0)
-    session.execute(stmt)
-    session.commit()
-
     if(db_contest != None):
         if(db_contest.mode == 2):
             days_left = (db_contest.end - curdate.date()).days
@@ -1247,39 +1242,41 @@ async def housekeeper():
             dbQuester.progress = 1
 
         # submit x amount of pieces quests
-        for x in range(3,9):
+        # 3-9
+        for x in range(3,10):
             dbQuester = getDBQuestMember(curr_member.id,x)
             if(dbQuester != None and dbQuester.completed == False):
                 dbQuester.progress = curr_member.totalsubmissions
 
         # attain x amount of streak score
-        for x in range(10,22):
+        # 10-22
+        for x in range(10,23):
             dbQuester = getDBQuestMember(curr_member.id,x)
             if(dbQuester != None and dbQuester.completed == False):
                 dbQuester.progress = curr_member.highscore
 
-
-
-        # this isnt working for god knows why
         # update dailies here (23-27)
-        for x in range(23,27):
+        for x in range(23,28):
             dbQuester = getDBQuestMember(curr_member.id,x)
             if(dbQuester != None and dbQuester.completed == False):
-                if(curr_member.submitted == 1):
-                    print("REACHED")
-                # elif(dbQuester.progress > 0 and curr_member.submitted == True):
-                #     print("2")
-                #     dbQuester.progress = dbQuester.progress + 1
-                # elif(dbQuester.progress > 0 and curr_member.submitted == False):
-                #     print("3")
-                #     dbQuester.progress = 0
+                if(dbQuester.progress == 0 and curr_member.submitted == True):
+                    dbQuester.progress = 1
+                    print(1)
+                elif(dbQuester.progress > 0 and curr_member.submitted == True):
+                    dbQuester.progress = dbQuester.progress + 1
+                    print(2)
+                elif(dbQuester.progress > 0 and curr_member.submitted == False):
+                    dbQuester.progress = 0
                 else:
-                    print("FAILURE")
+                    print("FAILURE TO CHECK PROPERLY")
 
         #Checks for quest completion here
         await checkQuests(curr_member.id)
 
     #commit all changes to the sheet at once
+    #reset all member's submitted status
+    stmt = update(User).values(submitted=0)
+    session.execute(stmt)
     session.commit()
     print("housekeeping finished")
 
