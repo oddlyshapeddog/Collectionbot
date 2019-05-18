@@ -35,8 +35,8 @@ DBSession = sessionmaker(bind=engine)
 #create session
 session = DBSession() #session.commit() to store data, and session.rollback() to discard changes
 
-#total number of quests
-quest_amount = 28
+#this tracks the number of quests that can be checked off by the bot
+quest_amount = 31
 
 spreadsheet_schema = {"Discord Name":1,"Start Date":2,"Level":3,"Currency":4,"Streak":5,"Streak Expires":6,"Submitted Today?":7,"Raffle Prompt Submitted":8,"Week Team":9,"Month Team":10,"Referred By":11,"Prompts Added":12,"Current XP":13}
 months = {1:"January",2:"February",3:"March",4:"April",5:"May",6:"June",7:"July",8:"August",9:"September",10:"October",11:"November",12:"December"}
@@ -1090,6 +1090,30 @@ async def on_message(message):
             await message.channel.send( "NOBODY EXPECTS THE SPANISH INQUISITION!")
         else:
             await message.channel.send( "You punched the air, its useless.")
+    elif message.content.lower().startswith('!questaward') and message.author.top_role >= adminRole:
+        #grants an achievement.
+        parse = message.content.split("-")
+        quest_receivers = ""
+        quest_id = parse[1]
+
+        if(int(quest_id) < 28):
+            await message.channel.send( "```Markdown\n# That quest is not avaialable for manual checking!\n```")
+        else:
+            # await checkQuestCompletion(message.author.id,0)
+            for person in message.mentions:
+                db_quester = getDBQuestMember(person.id,quest_id)
+                db_user = getDBUser(person.id)
+                #if we found the user in our spreadsheet
+                if(db_quester != None):
+                    db_questitem = getDBQuestItem(quest_id)
+                    db_quester.progress = 1
+                    db_user.currency = db_user.currency + db_questitem.award
+                    await checkQuestCompletion(person.id,int(quest_id))
+                    await botChannel.send("`Awarded {0} currency!`".format(db_questitem.award))
+                else:
+                    await botChannel.send("<@{0}>, does not have quest {1}! please check if the user is signed up for quests and if the admin selected the right quest".format(person.id,quest_id))
+
+            await message.channel.send( "```Markdown\n# All quest entrants marked!\n```")
 
 async def updateRoles(serv):
     #get all rows and put into memory
@@ -1559,12 +1583,27 @@ async def createQuestTable():
     if(getDBQuestItem(27) == None):
         new_quest = QuestsList(questId = 27, description = "Submit daily for 365 days", completion = 365, award = 6000)
         session.add(new_quest)
+
+    #quests that will be marked by admins as they cannot be tracked by the admins
+    #easy,medium,and hard mode quests have set rewards for their tiers
+    #extra money can be gained from these quests
+
+    if(getDBQuestItem(28) == None):
+        new_quest = QuestsList(questId = 28, description = "Submit a drawing that has a hat in it", completion = 1, award = 20)
+        session.add(new_quest)
+    if(getDBQuestItem(29) == None):
+        new_quest = QuestsList(questId = 29, description = "Submit a drawing of a character in armor", completion = 1, award = 80)
+        session.add(new_quest)
+    if(getDBQuestItem(30) == None):
+        new_quest = QuestsList(questId = 30, description = "Submit a refsheet of a character in a questing outfit that includes: 1 full body shot (with or without clothes), 1 shot of their outfit, 1 shot of their weapon", completion = 1, award = 200)
+        session.add(new_quest)
+
     session.commit()
 
 async def checkQuests(usrId):
 
     #checks through all quests per user
-    for x in range(quest_amount):
+    for x in range(27):
         await checkQuestCompletion(usrId,x)
 
 
@@ -1585,6 +1624,7 @@ async def checkQuestCompletion(usrId,questId):
 
         if(db_quester.completed == False and db_quester.progress >= db_questitem.completion):
             await botChannel.send("<@{1}>, you have completed quest {0}!\n`{2}`".format(str(questId),usrId,db_questitem.description))
+            await botChannel.send("`awarded {0} xp points!`".format(db_questitem.award))
             db_quester.completed = True
             db_user = session.query(User).filter(User.id == usrId).one()
             if(questId == 2):
