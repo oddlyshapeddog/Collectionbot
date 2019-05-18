@@ -543,7 +543,7 @@ async def on_message(message):
             current_streak = db_user.streak
             new_streak = current_streak-1
             current_xp = db_user.currentxp
-            xp_lost = 20 + int(math.floor((current_streak)/2))
+            xp_lost = 10 + int(math.floor((current_streak)/4))
             current_level = db_user.level
             last_level_required_xp = (current_level-1)*10 + 50
             new_xp_total = current_xp - xp_lost
@@ -698,6 +698,7 @@ async def on_message(message):
                     if(curr_member.raffle == 1):
                         numRaffle = numRaffle+1
                         curr_member.raffle = 0
+                        await resetQuestProgress(curr_member.id,2)
                 #commit all changes to the sheet at once
                 session.commit()
                 print("raffle reset finished")
@@ -958,15 +959,67 @@ async def on_message(message):
         await createQuestTable()
         await message.channel.send( "```diff\n+ Updated the questslist!\n```")
 
+    elif message.content.lower().startswith('!resetlevels') and message.author != message.author.guild.me and message.author.top_role >= adminRole:
+        await message.channel.send("This command will reset levels and xp for all members. Type !yes to confirm, or !no to cancel.")
+        confirm = await confirmDecision(message.author)
+        if(confirm):
+            members = session.query(User).all()
+            await message.channel.send( "```Markdown\n# Reseting every users level and xp to 0\n```")
+            for curr_member in members:
+                curr_member.level = 0
+                curr_member.currentxp = 0
+
+            session.commit()
+            await message.channel.send( "```Markdown\n# Reset successful!\n```")
+        else:
+            await message.channel.send("level reset cancelled")
+
     elif message.content.lower().startswith('!resq') and message.author != message.author.guild.me and message.author.top_role >= adminRole:
         #test method to reset quests (abstract out resetting to its own method)
         for x in range(quest_amount):
-            db_quester = getDBQuestMember(message.author.id,x)
-            db_quester.completed = 0
-            db_quester.progress = 0
+            await resetQuestProgress(message.author.id,x)
             session.commit()
         #commit session
         await message.channel.send("nothing")
+    elif message.content.lower().startswith('!questreset') and message.author != message.author.guild.me and message.author.top_role >= adminRole:
+
+        db_quester = getDBQuestMember(message.author.id,0)
+        db_user = getDBUser(message.author.id)
+        parse = message.content.split(" ")
+
+        if(db_user == None):
+            await message.channel.send("```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
+        elif(db_quester == None):
+            await message.channel.send("```diff\n- I couldn't find your name on the quest board. Are you sure you're signed up? If you are, contact an admin immediately.\n```")
+        else:
+            if(len(parse) > 1 and isNumber(parse[1])):
+                questnum = int(parse[1])
+
+                if(questnum >= 23 and questnum <= 27):
+
+                    if(getDBQuestMember(message.author.id,questnum) == None):
+                        await message.channel.send("```diff\n- You don't have this as an avialable quest, please use the !updatequest command to get any new quests you missed!.\n```")
+                    elif(getDBQuestMember(message.author.id,questnum).completed == False):
+                        await message.channel.send("```diff\n- You have not completed this quest yet so you can't reset it!.\n```")
+                    elif(db_user.currency >= 500):
+
+                        await message.channel.send( "```Python\n@{0}\n```\n```Markdown\n# You're about to reset quest {0} for 500 currency, are you sure you want to do this?  Type !yes to confirm and !no to cancel\n```".format(questnum))
+                        try:
+                            confirm = await confirmDecision(message.author)
+                            if confirm:
+                                await message.channel.send( "```diff\n+ you have reset your status on quest {0}!\n```".format(questnum))
+                                await resetQuestProgress(db_user.id, questnum)
+                                db_user.currency = db_user.currency - 500
+                                session.commit()
+                            else:
+                                await message.channel.send( "```Markdown\n# Transaction cancelled.\n```")
+                        except:
+                            print("transaction with {0} timed out".format(message.author.name))
+
+                    else:
+                        await message.channel.send( "```diff\n+ You do not have enough currency to reset the quest!\n```")
+            else:
+                await message.channel.send( "```diff\n+ Please enter in the questreset command with the number of a quest that can be reset!\n```")
 
     #add in extra part to limit to only a certain quest if specified, otherwise it sends all
     elif message.content.lower().startswith('!board') and message.author != message.author.guild.me:
@@ -992,11 +1045,15 @@ async def on_message(message):
                     qTask = db_questitem.description
                     qProgress = db_quester.progress
                     qGoal = db_questitem.completion
+                    qStatusString = 'NOT COMPLETED' if db_quester.completed == False else 'COMPLETED'
+
                     embedQ.add_field(name=qName, value=qTask, inline=False)
+                    embedQ.add_field(name='XP Reward', value=db_questitem.award, inline=False)
+                    embedQ.add_field(name='Quest status', value=qStatusString, inline=False)
                     embedQ.add_field(name='Your current progress', value=qProgress, inline=False)
                     embedQ.add_field(name='Amount needed', value=qGoal, inline=False)
                     await user.send(embed=embedQ)
-                    await message.channel.send( "```diff\n+ Your progress on quests hass been sent!\n```")
+                    await message.channel.send( "```diff\n+ Your progress on quests  been sent!\n```")
                 else:
                     await message.channel.send( "```diff\n+ Quest #{0} is not a valid quest, please refer back to the quest board for available quests!\n```".format(item))
             elif(len(parse) > 1 and str(parse[1]).lower() == "all"):
@@ -1011,13 +1068,28 @@ async def on_message(message):
                     qTask = db_questitem.description
                     qProgress = db_quester.progress
                     qGoal = db_questitem.completion
+                    qStatusString = 'NOT COMPLETED' if db_quester.completed == False else 'COMPLETED'
+
                     embedQ.add_field(name=qName, value=qTask, inline=False)
+                    embedQ.add_field(name='XP Reward', value=db_questitem.award, inline=False)
+                    embedQ.add_field(name='Quest status', value=qStatusString, inline=False)
                     embedQ.add_field(name='Your current progress', value=qProgress, inline=False)
                     embedQ.add_field(name='Amount needed', value=qGoal, inline=False)
                     await user.send(embed=embedQ)
-                await message.channel.send( "```diff\n+ Your progress on quests hass been sent!\n```")
+                await message.channel.send( "```diff\n+ Your progress on quests has been sent!\n```")
             else:
                 await message.channel.send( "```diff\n+ Please enter in the board command with the number of a quest or \"all\"!\n```")
+
+    elif message.content.lower().startswith('!battle') and message.channel == botChannel and message.author != message.author.guild.me:
+
+        value = random.randint(1,20)
+
+        if(value == 1):
+            await message.channel.send( "You exploded from the air being stronger than you.")
+        elif(value == 20):
+            await message.channel.send( "NOBODY EXPECTS THE SPANISH INQUISITION!")
+        else:
+            await message.channel.send( "You punched the air, its useless.")
 
 async def updateRoles(serv):
     #get all rows and put into memory
@@ -1141,7 +1213,7 @@ async def handleSubmit(message, userToUpdate, url):
                 current_streak = db_user.streak
                 new_streak = current_streak+1
                 current_xp = db_user.currentxp
-                xp_gained = 20 + int(math.floor(current_streak/2))
+                xp_gained = 10 + int(math.floor(current_streak/4))
                 current_level = db_user.level
                 next_level_required_xp = current_level*10 + 50
                 new_xp_total = current_xp + xp_gained
@@ -1374,101 +1446,101 @@ async def createQuestTable():
 
     #stats tutorial
     if(getDBQuestItem(0) == None):
-        new_quest = QuestsList(questId = 0, description = "Use the !stats command once", completion = 1, award = 50)
+        new_quest = QuestsList(questId = 0, description = "Use the !stats command once", completion = 1, award = 20)
         session.add(new_quest)
     #submit tutorial
     if(getDBQuestItem(1) == None):
-        new_quest = QuestsList(questId = 1, description = "Successfully submit a piece to a submission channel", completion = 1, award = 50)
+        new_quest = QuestsList(questId = 1, description = "Successfully submit a piece to a submission channel", completion = 1, award = 20)
         session.add(new_quest)
 
     #raffle
 
     #Submit a raffle piece
     if(getDBQuestItem(2) == None):
-        new_quest = QuestsList(questId = 2, description = "Successfully enter in a raffle piece for the monthly rafle", completion = 1, award = 50)
+        new_quest = QuestsList(questId = 2, description = "Successfully enter in a raffle piece for the monthly rafle", completion = 1, award = 20)
         session.add(new_quest)
-    #have 5 overall submit
+    #have 5 overall submits
     if(getDBQuestItem(3) == None):
-        new_quest = QuestsList(questId = 3, description = "Submit 5 pieces of art overall to the submission channels", completion = 5, award = 100)
+        new_quest = QuestsList(questId = 3, description = "Submit 5 pieces of art overall to the submission channels", completion = 5, award = 20)
         session.add(new_quest)
     #have 10 overall submits
     if(getDBQuestItem(4) == None):
-        new_quest = QuestsList(questId = 4, description = "Submit 10 pieces of art overall to the submission channels", completion = 10, award = 500)
+        new_quest = QuestsList(questId = 4, description = "Submit 10 pieces of art overall to the submission channels", completion = 10, award = 40)
         session.add(new_quest)
     #have 20 overall submits
     if(getDBQuestItem(5) == None):
-        new_quest = QuestsList(questId = 5, description = "Submit 20 pieces of art overall to the submission channels", completion = 20, award = 500)
+        new_quest = QuestsList(questId = 5, description = "Submit 20 pieces of art overall to the submission channels", completion = 20, award = 80)
         session.add(new_quest)
     #have 50 overall submits
     if(getDBQuestItem(6) == None):
-        new_quest = QuestsList(questId = 6, description = "Submit 50 pieces of art overall to the submission channels", completion = 50, award = 500)
+        new_quest = QuestsList(questId = 6, description = "Submit 50 pieces of art overall to the submission channels", completion = 50, award = 160)
         session.add(new_quest)
     #have 100 overall submits
     if(getDBQuestItem(7) == None):
-        new_quest = QuestsList(questId = 7, description = "Submit 100 pieces of art overall to the submission channels", completion = 100, award = 500)
+        new_quest = QuestsList(questId = 7, description = "Submit 100 pieces of art overall to the submission channels", completion = 100, award = 320)
         session.add(new_quest)
     #have 200 overall submits
     if(getDBQuestItem(8) == None):
-        new_quest = QuestsList(questId = 8, description = "Submit 200 pieces of art overall to the submission channels", completion = 200, award = 500)
+        new_quest = QuestsList(questId = 8, description = "Submit 200 pieces of art overall to the submission channels", completion = 200, award = 640)
         session.add(new_quest)
     #have 300 overall submits
     if(getDBQuestItem(9) == None):
-        new_quest = QuestsList(questId = 9, description = "Submit 300 pieces of art overall to the submission channels", completion = 300, award = 500)
+        new_quest = QuestsList(questId = 9, description = "Submit 300 pieces of art overall to the submission channels", completion = 300, award = 1280)
         session.add(new_quest)
 
     #streaks
 
     #attain a 5+streak highscore
     if(getDBQuestItem(10) == None):
-        new_quest = QuestsList(questId = 10, description = "Attain a streak highscore of 5", completion = 5, award = 100)
+        new_quest = QuestsList(questId = 10, description = "Attain a streak highscore of 5", completion = 5, award = 20)
         session.add(new_quest)
     #attain a 10+streak highscore
     if(getDBQuestItem(11) == None):
-        new_quest = QuestsList(questId = 11, description = "Attain a streak highscore of 10", completion = 10, award = 100)
+        new_quest = QuestsList(questId = 11, description = "Attain a streak highscore of 10", completion = 10, award = 40)
         session.add(new_quest)
     #attain a 15+streak highscore
     if(getDBQuestItem(12) == None):
-        new_quest = QuestsList(questId = 12, description = "Attain a streak highscore of 15", completion = 15, award = 100)
+        new_quest = QuestsList(questId = 12, description = "Attain a streak highscore of 15", completion = 15, award = 60)
         session.add(new_quest)
     #attain a 20+streak highscore
     if(getDBQuestItem(13) == None):
-        new_quest = QuestsList(questId = 13, description = "Attain a streak highscore of 20", completion = 20, award = 100)
+        new_quest = QuestsList(questId = 13, description = "Attain a streak highscore of 20", completion = 20, award = 80)
         session.add(new_quest)
     #attain a 25+streak highscore
     if(getDBQuestItem(14) == None):
-        new_quest = QuestsList(questId = 14, description = "Attain a streak highscore of 25", completion = 25, award = 100)
+        new_quest = QuestsList(questId = 14, description = "Attain a streak highscore of 25", completion = 25, award = 110)
         session.add(new_quest)
     #attain a 30+streak highscore
     if(getDBQuestItem(15) == None):
-        new_quest = QuestsList(questId = 15, description = "Attain a streak highscore of 30", completion = 30, award = 100)
+        new_quest = QuestsList(questId = 15, description = "Attain a streak highscore of 30", completion = 30, award = 140)
         session.add(new_quest)
     #attain a 60+streak highscore
     if(getDBQuestItem(16) == None):
-        new_quest = QuestsList(questId = 16, description = "Attain a streak highscore of 60", completion = 60, award = 100)
+        new_quest = QuestsList(questId = 16, description = "Attain a streak highscore of 60", completion = 60, award = 160)
         session.add(new_quest)
     #attain a 90+streak highscore
     if(getDBQuestItem(17) == None):
-        new_quest = QuestsList(questId = 17, description = "Attain a streak highscore of 90", completion = 90, award = 100)
+        new_quest = QuestsList(questId = 17, description = "Attain a streak highscore of 90", completion = 90, award = 200)
         session.add(new_quest)
     #attain a 120+streak highscore
     if(getDBQuestItem(18) == None):
-        new_quest = QuestsList(questId = 18, description = "Attain a streak highscore of 120", completion = 120, award = 100)
+        new_quest = QuestsList(questId = 18, description = "Attain a streak highscore of 120", completion = 120, award = 320)
         session.add(new_quest)
     #attain a 150+streak highscore
     if(getDBQuestItem(19) == None):
-        new_quest = QuestsList(questId = 19, description = "Attain a streak highscore of 150", completion = 150, award = 100)
+        new_quest = QuestsList(questId = 19, description = "Attain a streak highscore of 150", completion = 150, award = 450)
         session.add(new_quest)
     #attain a 200+streak highscore
     if(getDBQuestItem(20) == None):
-        new_quest = QuestsList(questId = 20, description = "Attain a streak highscore of 200", completion = 200, award = 100)
+        new_quest = QuestsList(questId = 20, description = "Attain a streak highscore of 200", completion = 200, award = 640)
         session.add(new_quest)
     #attain a 250+streak highscore
     if(getDBQuestItem(21) == None):
-        new_quest = QuestsList(questId = 21, description = "Attain a streak highscore of 250", completion = 250, award = 100)
+        new_quest = QuestsList(questId = 21, description = "Attain a streak highscore of 250", completion = 250, award = 900)
         session.add(new_quest)
     #attain a 300+streak highscore
     if(getDBQuestItem(22) == None):
-        new_quest = QuestsList(questId = 22, description = "Attain a streak highscore of 300", completion = 300, award = 100)
+        new_quest = QuestsList(questId = 22, description = "Attain a streak highscore of 300", completion = 300, award = 1280)
         session.add(new_quest)
 
     #time based quests (submitting daily for x time)
@@ -1476,16 +1548,16 @@ async def createQuestTable():
         new_quest = QuestsList(questId = 23, description = "Submit daily for 7 days", completion = 7, award = 100)
         session.add(new_quest)
     if(getDBQuestItem(24) == None):
-        new_quest = QuestsList(questId = 24, description = "Submit daily for 30 days", completion = 30, award = 100)
+        new_quest = QuestsList(questId = 24, description = "Submit daily for 30 days", completion = 30, award = 400)
         session.add(new_quest)
     if(getDBQuestItem(25) == None):
-        new_quest = QuestsList(questId = 25, description = "Submit daily for 100 days", completion = 100, award = 100)
+        new_quest = QuestsList(questId = 25, description = "Submit daily for 100 days", completion = 100, award = 1200)
         session.add(new_quest)
     if(getDBQuestItem(26) == None):
-        new_quest = QuestsList(questId = 26, description = "Submit daily for 200 days", completion = 200, award = 100)
+        new_quest = QuestsList(questId = 26, description = "Submit daily for 200 days", completion = 200, award = 4200)
         session.add(new_quest)
     if(getDBQuestItem(27) == None):
-        new_quest = QuestsList(questId = 27, description = "Submit daily for 365 days", completion = 365, award = 100)
+        new_quest = QuestsList(questId = 27, description = "Submit daily for 365 days", completion = 365, award = 6000)
         session.add(new_quest)
     session.commit()
 
@@ -1515,7 +1587,11 @@ async def checkQuestCompletion(usrId,questId):
             await botChannel.send("<@{1}>, you have completed quest {0}!\n`{2}`".format(str(questId),usrId,db_questitem.description))
             db_quester.completed = True
             db_user = session.query(User).filter(User.id == usrId).one()
-            await addXP(db_user,db_questitem.award)
+            if(questId == 2):
+                # raffle quest adds on 20 + current_streak_2
+                await addXP(db_user,db_questitem.award + int(math.floor((db_user.streak)/2)))
+            else:
+                await addXP(db_user,db_questitem.award)
 
     else:
 
