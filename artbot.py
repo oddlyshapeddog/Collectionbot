@@ -35,9 +35,6 @@ DBSession = sessionmaker(bind=engine)
 #create session
 session = DBSession() #session.commit() to store data, and session.rollback() to discard changes
 
-#this tracks the number of quests that can be checked off by the bot
-quest_amount = 31
-
 spreadsheet_schema = {"Discord Name":1,"Start Date":2,"Level":3,"Currency":4,"Streak":5,"Streak Expires":6,"Submitted Today?":7,"Raffle Prompt Submitted":8,"Week Team":9,"Month Team":10,"Referred By":11,"Prompts Added":12,"Current XP":13}
 months = {1:"January",2:"February",3:"March",4:"April",5:"May",6:"June",7:"July",8:"August",9:"September",10:"October",11:"November",12:"December"}
 nonach_roles = ["0+ Streak","5+ Streak","10+ Streak","15+ Streak","20+ Streak","25+ Streak","30+ Streak","60+ Streak","90+ Streak","120+ Streak","150+ Streak","200+ Streak","250+ Streak","300+ Streak","Admins","Raffle","Community Admins","Type !help for info","@everyone","NSFW Artist", "Artists", "Head Admins", "999+ Streak", "2000+ Streak", "Override (5+)", "Override (10+)", "Override (15+)", "Override (20+)", "Override (25+)", "Override (30+)", "Override (60+)", "Override (90+)", "Override (120+)", "Override (150+)", "Override (200+)", "Override (250+)", "Override (300+)"]
@@ -169,6 +166,11 @@ async def on_message(message):
             new_user = User(name=message.author.name, level=1, id=message.author.id, startdate=curdate, currency=0, streak=0, expiry=curdate, submitted=0, raffle=0, promptsadded=0, totalsubmissions=0, currentxp=0, adores=0, highscore=0, decaywarning=True)
             #add to session
             session.add(new_user)
+            #make user's quest board
+            db_quests = session.query(QuestsList)
+            for quest in db_quests:
+                new_quester = QuestsMembers(usrId = message.author.id, questId = quest.questId, name=message.author.name,completed = False, progress = 0)
+                session.add(new_quester)
             #give relevant roles
             for rank in serv.roles:
                 if rank.name == "0+ Streak":
@@ -919,45 +921,29 @@ async def on_message(message):
         await message.channel.send( "run housekeeping for testing\n")
         await housekeeper()
 
-    elif message.content.lower().startswith('!questing') and message.author != message.author.guild.me:
-        #creates table for that user's quests
-        db_user = getDBUser(message.author.id)
-        db_quester = getDBQuestMember(message.author.id,0)
-        if(db_user == None):
-            await message.channel.send("```diff\n- I couldn't find your name in our spreadsheet. Please register as an artist with the !register command first before you can quest!\n```")
-        elif(db_quester == None):
-            for x in range(quest_amount):
-                new_quester = QuestsMembers(usrId = message.author.id, questId = x, name=message.author.name,completed = False, progress = 0)
-                session.add(new_quester)
-            session.commit()
-            await message.channel.send( "```diff\n+ Successfully signed up for quests!\n```")
-        else:
-            await message.channel.send( "```Markdown\n# You're already signed up for quests!\n```")
-
-    elif message.content.lower().startswith('!updatequest') and message.author != message.author.guild.me:
-        #user updates their own quest list when the main quests have been updated
-        db_user = getDBUser(message.author.id)
-        db_quester = getDBQuestMember(message.author.id,0)
-        if(db_user == None):
-            await message.channel.send("```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
-        elif(db_quester == None):
-            await message.channel.send("```diff\n- I couldn't find your name on the quest board. Are you sure you're signed up? If you are, contact an admin immediately.\n```")
-        else:
-            await message.channel.send( "```diff\n+ Please wait as we update your personal quests list...\n```")
-            for x in range(quest_amount):
-                db_quester = getDBQuestMember(message.author.id,x)
-                if(db_quester == None):
-                    new_quester = QuestsMembers(usrId = message.author.id, questId = x, name=message.author.name,completed = False, progress = 0)
-                    session.add(new_quester)
-
-            await message.channel.send( "```diff\n+ Successfully updated your quests list!\n```")
-            session.commit()
-
     elif message.content.lower().startswith('!create') and message.author != message.author.guild.me and message.author.top_role >= adminRole:
         #Command for admins to create the quest table, and to update it when any new ones are added
         await message.channel.send( "```Markdown\n# Running quests list update\n```")
         await createQuestTable()
         await message.channel.send( "```diff\n+ Updated the questslist!\n```")
+
+    elif message.content.lower().startswith('!updatequests') and message.author.top_role >= adminRole:
+        #this method will be to fill in the quests for any user already signed up
+        members = session.query(User).all()
+        await message.channel.send( "```diff\n+ Please wait as every user has their quests updated...\n```")
+
+        for curr_member in members:
+            db_quests = session.query(QuestsList)
+
+            for quest in db_quests:
+                db_quester = getDBQuestMember(curr_member.id,quest.questId)
+
+                if(db_quester == None):
+                    new_quester = QuestsMembers(usrId = curr_member.id, questId = quest.questId, name=curr_member.name,completed = False, progress = 0)
+                    session.add(new_quester)
+
+        await message.channel.send( "```diff\n+ Successfully updated your quests list!\n```")
+        session.commit()
 
     elif message.content.lower().startswith('!resetlevels') and message.author != message.author.guild.me and message.author.top_role >= adminRole:
         await message.channel.send("This command will reset levels and xp for all members. Type !yes to confirm, or !no to cancel.")
@@ -974,18 +960,21 @@ async def on_message(message):
         else:
             await message.channel.send("level reset cancelled")
 
-    elif message.content.lower().startswith('!resq') and message.author != message.author.guild.me and message.author.top_role >= adminRole:
-        #test method to reset quests (abstract out resetting to its own method)
-        for x in range(quest_amount):
-            await resetQuestProgress(message.author.id,x)
-            session.commit()
-        #commit session
-        await message.channel.send("nothing")
+    # elif message.content.lower().startswith('!resq') and message.author != message.author.guild.me and message.author.top_role >= adminRole:
+    #     #test method to reset quests (abstract out resetting to its own method)
+    #     db_quests = session.query(QuestsList)
+    #     for quest in db_quests:
+    #         await resetQuestProgress(message.author.id,quest.questId)
+    #         session.commit()
+    #     #commit session
+    #     await message.channel.send("nothing")
     elif message.content.lower().startswith('!questreset') and message.author != message.author.guild.me and message.author.top_role >= adminRole:
 
         db_quester = getDBQuestMember(message.author.id,0)
         db_user = getDBUser(message.author.id)
         parse = message.content.split(" ")
+        db_quests = getDBResetQuests()
+        markedQuest = None
 
         if(db_user == None):
             await message.channel.send("```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
@@ -995,11 +984,13 @@ async def on_message(message):
             if(len(parse) > 1 and isNumber(parse[1])):
                 questnum = int(parse[1])
 
-                if(questnum >= 23 and questnum <= 27):
+                for quest in db_quests:
+                    if(quest.questId == int(questnum)):
+                        markedQuest = quest
 
-                    if(getDBQuestMember(message.author.id,questnum) == None):
-                        await message.channel.send("```diff\n- You don't have this as an avialable quest, please use the !updatequest command to get any new quests you missed!.\n```")
-                    elif(getDBQuestMember(message.author.id,questnum).completed == False):
+                if(markedQuest != None):
+
+                    if(getDBQuestMember(message.author.id,questnum).completed == False):
                         await message.channel.send("```diff\n- You have not completed this quest yet so you can't reset it!.\n```")
                     elif(db_user.currency >= 500):
 
@@ -1017,9 +1008,11 @@ async def on_message(message):
                             print("transaction with {0} timed out".format(message.author.name))
 
                     else:
-                        await message.channel.send( "```diff\n+ You do not have enough currency to reset the quest!\n```")
+                        await message.channel.send( "```diff\n- You do not have enough currency to reset the quest!\n```")
+                else:
+                    await message.channel.send( "```diff\n- That is not a resetable quest!\n```")
             else:
-                await message.channel.send( "```diff\n+ Please enter in the questreset command with the number of a quest that can be reset!\n```")
+                await message.channel.send( "```diff\n- Please enter in the questreset command with the number of a quest that can be reset!\n```")
 
     #add in extra part to limit to only a certain quest if specified, otherwise it sends all
     elif message.content.lower().startswith('!board') and message.author != message.author.guild.me:
@@ -1055,16 +1048,18 @@ async def on_message(message):
                     await user.send(embed=embedQ)
                     await message.channel.send( "```diff\n+ Your progress on quests  been sent!\n```")
                 else:
-                    await message.channel.send( "```diff\n+ Quest #{0} is not a valid quest, please refer back to the quest board for available quests!\n```".format(item))
+                    await message.channel.send( "```diff\n- Quest #{0} is not a valid quest, please refer back to the quest board for available quests!\n```".format(item))
             elif(len(parse) > 1 and str(parse[1]).lower() == "all"):
                 # use split command to check for number and correspond that with a quest
                 user = discord.utils.get(client.get_all_members(), id=message.author.id)
+                db_quests = session.query(QuestsList)
                 await message.channel.send( "```diff\n+ Please wait as we send you the quest progress data...\n```")
-                for x in range(quest_amount):
+
+                for quests in db_quests:
                     embedQ = discord.Embed(color=0xFF85FF)
-                    db_questitem = getDBQuestItem(x)
-                    db_quester = getDBQuestMember(message.author.id,x)
-                    qName = "__**QUEST {0}**__".format(x)
+                    db_questitem = getDBQuestItem(quests.questId)
+                    db_quester = getDBQuestMember(message.author.id,quests.questId)
+                    qName = "__**QUEST {0}**__".format(quests.questId)
                     qTask = db_questitem.description
                     qProgress = db_quester.progress
                     qGoal = db_questitem.completion
@@ -1076,9 +1071,10 @@ async def on_message(message):
                     embedQ.add_field(name='Your current progress', value=qProgress, inline=False)
                     embedQ.add_field(name='Amount needed', value=qGoal, inline=False)
                     await user.send(embed=embedQ)
+
                 await message.channel.send( "```diff\n+ Your progress on quests has been sent!\n```")
             else:
-                await message.channel.send( "```diff\n+ Please enter in the board command with the number of a quest or \"all\"!\n```")
+                await message.channel.send( "```diff\n- Please enter in the !board command with the number of a quest or \"all\"!\n```")
 
     elif message.content.lower().startswith('!battle') and message.channel == botChannel and message.author != message.author.guild.me:
 
@@ -1094,26 +1090,38 @@ async def on_message(message):
         #grants an achievement.
         parse = message.content.split("-")
         quest_receivers = ""
-        quest_id = parse[1]
+        markedQuest = None
+        manQuests = getDBManualQuests()
 
-        if(int(quest_id) < 28):
-            await message.channel.send( "```Markdown\n# That quest is not avaialable for manual checking!\n```")
+        if(len(parse) < 2):
+            await message.channel.send( "```Markdown\n# Incorrect!\n```")
         else:
-            # await checkQuestCompletion(message.author.id,0)
-            for person in message.mentions:
-                db_quester = getDBQuestMember(person.id,quest_id)
-                db_user = getDBUser(person.id)
-                #if we found the user in our spreadsheet
-                if(db_quester != None):
-                    db_questitem = getDBQuestItem(quest_id)
-                    db_quester.progress = 1
-                    db_user.currency = db_user.currency + db_questitem.award
-                    await checkQuestCompletion(person.id,int(quest_id))
-                    await botChannel.send("`Awarded {0} currency!`".format(db_questitem.award))
-                else:
-                    await botChannel.send("<@{0}>, does not have quest {1}! please check if the user is signed up for quests and if the admin selected the right quest".format(person.id,quest_id))
+            quest_id = parse[1]
+            for quest in manQuests:
+                if(quest.questId == int(quest_id)):
+                    markedQuest = quest
 
-            await message.channel.send( "```Markdown\n# All quest entrants marked!\n```")
+            if(markedQuest != None):
+                print(quest.description)
+                for person in message.mentions:
+                    db_quester = getDBQuestMember(person.id,quest_id)
+                    db_user = getDBUser(person.id)
+                    #if we found the user in our spreadsheet
+                    if(db_quester != None):
+                        db_questitem = getDBQuestItem(quest_id)
+                        db_quester.progress = 1
+                        db_user.currency = db_user.currency + db_questitem.award
+                        await checkQuestCompletion(person.id,int(quest_id))
+                        await botChannel.send("`Awarded {0} currency!`".format(db_questitem.award))
+                    else:
+                        await botChannel.send("<@{0}>, does not have quest {1}! please check if the user is signed up for quests and if the admin selected the right quest".format(person.id,quest_id))
+
+                await message.channel.send( "```Markdown\n# All quest entrants marked!\n```")
+            else:
+                await message.channel.send( "```Markdown\n# That quest is not avaialable for manual checking!\n```")
+
+
+
 
 async def updateRoles(serv):
     #get all rows and put into memory
@@ -1357,10 +1365,8 @@ async def housekeeper():
             if(dbQuester != None and dbQuester.completed == False):
                 if(dbQuester.progress == 0 and curr_member.submitted == True):
                     dbQuester.progress = 1
-                    print(1)
                 elif(dbQuester.progress > 0 and curr_member.submitted == True):
                     dbQuester.progress = dbQuester.progress + 1
-                    print(2)
                 elif(dbQuester.progress > 0 and curr_member.submitted == False):
                     dbQuester.progress = 0
                 else:
@@ -1470,118 +1476,118 @@ async def createQuestTable():
 
     #stats tutorial
     if(getDBQuestItem(0) == None):
-        new_quest = QuestsList(questId = 0, description = "Use the !stats command once", completion = 1, award = 20)
+        new_quest = QuestsList(questId = 0, description = "Use the !stats command once", completion = 1, award = 20, mode = "none",reset = False)
         session.add(new_quest)
     #submit tutorial
     if(getDBQuestItem(1) == None):
-        new_quest = QuestsList(questId = 1, description = "Successfully submit a piece to a submission channel", completion = 1, award = 20)
+        new_quest = QuestsList(questId = 1, description = "Successfully submit a piece to a submission channel", completion = 1, award = 20, mode = "none",reset = False)
         session.add(new_quest)
 
     #raffle
 
     #Submit a raffle piece
     if(getDBQuestItem(2) == None):
-        new_quest = QuestsList(questId = 2, description = "Successfully enter in a raffle piece for the monthly rafle", completion = 1, award = 20)
+        new_quest = QuestsList(questId = 2, description = "Successfully enter in a raffle piece for the monthly rafle", completion = 1, award = 20, mode = "auto",reset = False)
         session.add(new_quest)
     #have 5 overall submits
     if(getDBQuestItem(3) == None):
-        new_quest = QuestsList(questId = 3, description = "Submit 5 pieces of art overall to the submission channels", completion = 5, award = 20)
+        new_quest = QuestsList(questId = 3, description = "Submit 5 pieces of art overall to the submission channels", completion = 5, award = 20, mode = "auto",reset = False)
         session.add(new_quest)
     #have 10 overall submits
     if(getDBQuestItem(4) == None):
-        new_quest = QuestsList(questId = 4, description = "Submit 10 pieces of art overall to the submission channels", completion = 10, award = 40)
+        new_quest = QuestsList(questId = 4, description = "Submit 10 pieces of art overall to the submission channels", completion = 10, award = 40, mode = "auto",reset = False)
         session.add(new_quest)
     #have 20 overall submits
     if(getDBQuestItem(5) == None):
-        new_quest = QuestsList(questId = 5, description = "Submit 20 pieces of art overall to the submission channels", completion = 20, award = 80)
+        new_quest = QuestsList(questId = 5, description = "Submit 20 pieces of art overall to the submission channels", completion = 20, award = 80, mode = "auto",reset = False)
         session.add(new_quest)
     #have 50 overall submits
     if(getDBQuestItem(6) == None):
-        new_quest = QuestsList(questId = 6, description = "Submit 50 pieces of art overall to the submission channels", completion = 50, award = 160)
+        new_quest = QuestsList(questId = 6, description = "Submit 50 pieces of art overall to the submission channels", completion = 50, award = 160, mode = "auto",reset = False)
         session.add(new_quest)
     #have 100 overall submits
     if(getDBQuestItem(7) == None):
-        new_quest = QuestsList(questId = 7, description = "Submit 100 pieces of art overall to the submission channels", completion = 100, award = 320)
+        new_quest = QuestsList(questId = 7, description = "Submit 100 pieces of art overall to the submission channels", completion = 100, award = 320, mode = "auto",reset = False)
         session.add(new_quest)
     #have 200 overall submits
     if(getDBQuestItem(8) == None):
-        new_quest = QuestsList(questId = 8, description = "Submit 200 pieces of art overall to the submission channels", completion = 200, award = 640)
+        new_quest = QuestsList(questId = 8, description = "Submit 200 pieces of art overall to the submission channels", completion = 200, award = 640, mode = "auto",reset = False)
         session.add(new_quest)
     #have 300 overall submits
     if(getDBQuestItem(9) == None):
-        new_quest = QuestsList(questId = 9, description = "Submit 300 pieces of art overall to the submission channels", completion = 300, award = 1280)
+        new_quest = QuestsList(questId = 9, description = "Submit 300 pieces of art overall to the submission channels", completion = 300, award = 1280, mode = "auto",reset = False)
         session.add(new_quest)
 
     #streaks
 
     #attain a 5+streak highscore
     if(getDBQuestItem(10) == None):
-        new_quest = QuestsList(questId = 10, description = "Attain a streak highscore of 5", completion = 5, award = 20)
+        new_quest = QuestsList(questId = 10, description = "Attain a streak highscore of 5", completion = 5, award = 20, mode = "auto",reset = False)
         session.add(new_quest)
     #attain a 10+streak highscore
     if(getDBQuestItem(11) == None):
-        new_quest = QuestsList(questId = 11, description = "Attain a streak highscore of 10", completion = 10, award = 40)
+        new_quest = QuestsList(questId = 11, description = "Attain a streak highscore of 10", completion = 10, award = 40, mode = "auto",reset = False)
         session.add(new_quest)
     #attain a 15+streak highscore
     if(getDBQuestItem(12) == None):
-        new_quest = QuestsList(questId = 12, description = "Attain a streak highscore of 15", completion = 15, award = 60)
+        new_quest = QuestsList(questId = 12, description = "Attain a streak highscore of 15", completion = 15, award = 60, mode = "auto",reset = False)
         session.add(new_quest)
     #attain a 20+streak highscore
     if(getDBQuestItem(13) == None):
-        new_quest = QuestsList(questId = 13, description = "Attain a streak highscore of 20", completion = 20, award = 80)
+        new_quest = QuestsList(questId = 13, description = "Attain a streak highscore of 20", completion = 20, award = 80, mode = "auto",reset = False)
         session.add(new_quest)
     #attain a 25+streak highscore
     if(getDBQuestItem(14) == None):
-        new_quest = QuestsList(questId = 14, description = "Attain a streak highscore of 25", completion = 25, award = 110)
+        new_quest = QuestsList(questId = 14, description = "Attain a streak highscore of 25", completion = 25, award = 110, mode = "auto",reset = False)
         session.add(new_quest)
     #attain a 30+streak highscore
     if(getDBQuestItem(15) == None):
-        new_quest = QuestsList(questId = 15, description = "Attain a streak highscore of 30", completion = 30, award = 140)
+        new_quest = QuestsList(questId = 15, description = "Attain a streak highscore of 30", completion = 30, award = 140, mode = "auto",reset = False)
         session.add(new_quest)
     #attain a 60+streak highscore
     if(getDBQuestItem(16) == None):
-        new_quest = QuestsList(questId = 16, description = "Attain a streak highscore of 60", completion = 60, award = 160)
+        new_quest = QuestsList(questId = 16, description = "Attain a streak highscore of 60", completion = 60, award = 160, mode = "auto",reset = False)
         session.add(new_quest)
     #attain a 90+streak highscore
     if(getDBQuestItem(17) == None):
-        new_quest = QuestsList(questId = 17, description = "Attain a streak highscore of 90", completion = 90, award = 200)
+        new_quest = QuestsList(questId = 17, description = "Attain a streak highscore of 90", completion = 90, award = 200, mode = "auto",reset = False)
         session.add(new_quest)
     #attain a 120+streak highscore
     if(getDBQuestItem(18) == None):
-        new_quest = QuestsList(questId = 18, description = "Attain a streak highscore of 120", completion = 120, award = 320)
+        new_quest = QuestsList(questId = 18, description = "Attain a streak highscore of 120", completion = 120, award = 320, mode = "auto",reset = False)
         session.add(new_quest)
     #attain a 150+streak highscore
     if(getDBQuestItem(19) == None):
-        new_quest = QuestsList(questId = 19, description = "Attain a streak highscore of 150", completion = 150, award = 450)
+        new_quest = QuestsList(questId = 19, description = "Attain a streak highscore of 150", completion = 150, award = 450, mode = "auto",reset = False)
         session.add(new_quest)
     #attain a 200+streak highscore
     if(getDBQuestItem(20) == None):
-        new_quest = QuestsList(questId = 20, description = "Attain a streak highscore of 200", completion = 200, award = 640)
+        new_quest = QuestsList(questId = 20, description = "Attain a streak highscore of 200", completion = 200, award = 640, mode = "auto",reset = False)
         session.add(new_quest)
     #attain a 250+streak highscore
     if(getDBQuestItem(21) == None):
-        new_quest = QuestsList(questId = 21, description = "Attain a streak highscore of 250", completion = 250, award = 900)
+        new_quest = QuestsList(questId = 21, description = "Attain a streak highscore of 250", completion = 250, award = 900, mode = "auto",reset = False)
         session.add(new_quest)
     #attain a 300+streak highscore
     if(getDBQuestItem(22) == None):
-        new_quest = QuestsList(questId = 22, description = "Attain a streak highscore of 300", completion = 300, award = 1280)
+        new_quest = QuestsList(questId = 22, description = "Attain a streak highscore of 300", completion = 300, award = 1280, mode = "auto",reset = False)
         session.add(new_quest)
 
     #time based quests (submitting daily for x time)
     if(getDBQuestItem(23) == None):
-        new_quest = QuestsList(questId = 23, description = "Submit daily for 7 days", completion = 7, award = 100)
+        new_quest = QuestsList(questId = 23, description = "Submit daily for 7 days", completion = 7, award = 100, mode = "auto",reset = True)
         session.add(new_quest)
     if(getDBQuestItem(24) == None):
-        new_quest = QuestsList(questId = 24, description = "Submit daily for 30 days", completion = 30, award = 400)
+        new_quest = QuestsList(questId = 24, description = "Submit daily for 30 days", completion = 30, award = 400, mode = "auto",reset = True)
         session.add(new_quest)
     if(getDBQuestItem(25) == None):
-        new_quest = QuestsList(questId = 25, description = "Submit daily for 100 days", completion = 100, award = 1200)
+        new_quest = QuestsList(questId = 25, description = "Submit daily for 100 days", completion = 100, award = 1200, mode = "auto",reset = True)
         session.add(new_quest)
     if(getDBQuestItem(26) == None):
-        new_quest = QuestsList(questId = 26, description = "Submit daily for 200 days", completion = 200, award = 4200)
+        new_quest = QuestsList(questId = 26, description = "Submit daily for 200 days", completion = 200, award = 4200, mode = "auto",reset = True)
         session.add(new_quest)
     if(getDBQuestItem(27) == None):
-        new_quest = QuestsList(questId = 27, description = "Submit daily for 365 days", completion = 365, award = 6000)
+        new_quest = QuestsList(questId = 27, description = "Submit daily for 365 days", completion = 365, award = 6000, mode = "auto",reset = True)
         session.add(new_quest)
 
     #quests that will be marked by admins as they cannot be tracked by the admins
@@ -1589,23 +1595,23 @@ async def createQuestTable():
     #extra money can be gained from these quests
 
     if(getDBQuestItem(28) == None):
-        new_quest = QuestsList(questId = 28, description = "Submit a drawing that has a hat in it", completion = 1, award = 20)
+        new_quest = QuestsList(questId = 28, description = "Submit a drawing that has a hat in it", completion = 1, award = 20, mode = "manual",reset = False)
         session.add(new_quest)
     if(getDBQuestItem(29) == None):
-        new_quest = QuestsList(questId = 29, description = "Submit a drawing of a character in armor", completion = 1, award = 80)
+        new_quest = QuestsList(questId = 29, description = "Submit a drawing of a character in armor", completion = 1, award = 80, mode = "manual",reset = False)
         session.add(new_quest)
     if(getDBQuestItem(30) == None):
-        new_quest = QuestsList(questId = 30, description = "Submit a refsheet of a character in a questing outfit that includes: 1 full body shot (with or without clothes), 1 shot of their outfit, 1 shot of their weapon", completion = 1, award = 200)
+        new_quest = QuestsList(questId = 30, description = "Submit a refsheet of a character in a questing outfit that includes: 1 full body shot (with or without clothes), 1 shot of their outfit, 1 shot of their weapon", completion = 1, award = 200, mode = "manual",reset = False)
         session.add(new_quest)
 
     session.commit()
 
 async def checkQuests(usrId):
 
-    #checks through all quests per user
-    for x in range(27):
-        await checkQuestCompletion(usrId,x)
-
+    #checks through all auto quests per user
+    autoQuests = getDBAutoQuests()
+    for x in autoQuests:
+        await checkQuestCompletion(usrId,x.questId)
 
 async def resetQuestProgress(usrId,questId):
 
@@ -1639,8 +1645,6 @@ async def checkQuestCompletion(usrId,questId):
 
     session.commit()
 
-
-
 def getDBUser(userID): #gets the database user based on the user's ID
     db_user = None #return none if we can't find a user
     try: #try to find user in database using id
@@ -1656,9 +1660,9 @@ def getDBContest(number): #gets the database user based on the user's ID
     try: #try to find user in database using id
         db_contest = session.query(Contest).filter(Contest.id == number).one()
     except sqlalchemy.orm.exc.NoResultFound:
-        print('No user found, probably not registered')
+        print('No contest found')
     except sqlalchemy.orm.exc.MultipleResultsFound:
-        print('Multiple users found, something is really broken!')
+        print('Multiple contests found, something is really broken!')
     return db_contest
 
 def getDBQuestMember(number,quest): #gets the database user based on the user's ID and the quest number
@@ -1666,9 +1670,9 @@ def getDBQuestMember(number,quest): #gets the database user based on the user's 
     try: #try to find user in database using id
         db_questmember = session.query(QuestsMembers).filter(QuestsMembers.usrId == number).filter(QuestsMembers.questId == quest).one()
     except sqlalchemy.orm.exc.NoResultFound:
-        print('No user found, probably not registered')
+        print('No user quest found, probably not registered')
     except sqlalchemy.orm.exc.MultipleResultsFound:
-        print('Multiple users found, something is really broken!')
+        print('Multiple quest instances for the user found, something is really broken!')
     return db_questmember
 
 def getDBQuestItem(number): #gets the database user based on the user's ID
@@ -1676,10 +1680,22 @@ def getDBQuestItem(number): #gets the database user based on the user's ID
     try: #try to find user in database using id
         db_questitem = session.query(QuestsList).filter(QuestsList.questId == number).one()
     except sqlalchemy.orm.exc.NoResultFound:
-        print('No user found, probably not registered')
+        print('No quest item found')
     except sqlalchemy.orm.exc.MultipleResultsFound:
-        print('Multiple users found, something is really broken!')
+        print('Multiple items found, something is really broken!')
     return db_questitem
+
+def getDBAutoQuests(): #gets auto quests
+    db_quests = session.query(QuestsList).filter(QuestsList.mode == "auto")
+    return db_quests
+
+def getDBManualQuests(): #gets manual quests
+    db_quests = session.query(QuestsList).filter(QuestsList.mode == "manual")
+    return db_quests
+
+def getDBResetQuests(): #gets resetable quests
+    db_quests = session.query(QuestsList).filter(QuestsList.reset == True)
+    return db_quests
 
 def isNumber(num):
     try:

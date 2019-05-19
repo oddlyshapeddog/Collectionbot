@@ -63,6 +63,10 @@ class QuestsList(Base):
     completion = Column(Integer, nullable=False)
     #amount of xp to be awarded for completing a quest
     award = Column(Integer, nullable=False)
+    #auto if is check by the bot, manual if checked by an admin
+    mode = Column(String(10), nullable=False)
+    #quest that can be reset by the users
+    reset = Column(Boolean,nullable=False)
 
 
 # Create an engine that stores data in the local directory's
