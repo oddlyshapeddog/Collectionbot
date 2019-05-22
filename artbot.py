@@ -1030,15 +1030,15 @@ async def on_message(message):
                 item = parse[1]
                 user = discord.utils.get(client.get_all_members(), id=message.author.id)
                 await message.channel.send( "```diff\n+ Please wait as we send you the quest progress data...\n```")
-                embedQ = discord.Embed(color=0xFF85FF)
+                embedQ = discord.Embed(color=0x85F7FF)
                 db_questitem = getDBQuestItem(item)
                 db_quester = getDBQuestMember(message.author.id,item)
                 if(db_questitem != None):
                     qName = "__**QUEST {0}**__".format(item)
                     qTask = db_questitem.description
-                    qProgress = db_quester.progress
                     qGoal = db_questitem.completion
-                    qStatusString = 'NOT COMPLETED' if db_quester.completed == False else 'COMPLETED'
+                    qProgress = "{0} out of {1}".format(db_quester.progress,qGoal)
+                    qStatusString = ':red_circle: You have not completed this quest' if db_quester.completed == False else ':white_check_mark: You have completed this quest!'
 
                     embedQ.add_field(name=qName, value=qTask, inline=False)
                     embedQ.add_field(name='XP Reward', value=db_questitem.award, inline=False)
@@ -1056,14 +1056,14 @@ async def on_message(message):
                 await message.channel.send( "```diff\n+ Please wait as we send you the quest progress data...\n```")
 
                 for quests in db_quests:
-                    embedQ = discord.Embed(color=0xFF85FF)
+                    embedQ = discord.Embed(color=0x85F7FF)
                     db_questitem = getDBQuestItem(quests.questId)
                     db_quester = getDBQuestMember(message.author.id,quests.questId)
                     qName = "__**QUEST {0}**__".format(quests.questId)
                     qTask = db_questitem.description
-                    qProgress = db_quester.progress
                     qGoal = db_questitem.completion
-                    qStatusString = 'NOT COMPLETED' if db_quester.completed == False else 'COMPLETED'
+                    qProgress = "{0} out of {1}".format(db_quester.progress,qGoal)
+                    qStatusString = ':red_circle: You have not completed this quest' if db_quester.completed == False else ':white_check_mark: You have completed this quest!'
 
                     embedQ.add_field(name=qName, value=qTask, inline=False)
                     embedQ.add_field(name='XP Reward', value=db_questitem.award, inline=False)
@@ -1074,18 +1074,33 @@ async def on_message(message):
 
                 await message.channel.send( "```diff\n+ Your progress on quests has been sent!\n```")
             else:
-                await message.channel.send( "```diff\n- Please enter in the !board command with the number of a quest or \"all\"!\n```")
+                db_quests = session.query(QuestsList)
+                await message.channel.send( "```diff\n+ Please wait as we send you the quest progress data...\n```")
+                quest_card = "```Python\n @{0} - Quests\n# Note: Completed ones are in green and denoted with a '+'.\n```\n```diff\n".format(message.author.name)
+                for quests in db_quests:
+                    db_quester = getDBQuestMember(message.author.id,quests.questId)
+                    if(db_quester.completed == True):
+                        quest_card = quest_card + '+ Quest {0}\n'.format(quests.questId)
+                    else:
+                        quest_card = quest_card + '# Quest {0}\n'.format(quests.questId)
+                quest_card = quest_card + "```"
+
+                await message.channel.send(quest_card)
 
     elif message.content.lower().startswith('!battle') and message.channel == botChannel and message.author != message.author.guild.me:
 
         value = random.randint(1,20)
 
         if(value == 1):
-            await message.channel.send( "You exploded from the air being stronger than you.")
-        elif(value == 20):
-            await message.channel.send( "NOBODY EXPECTS THE SPANISH INQUISITION!")
-        else:
-            await message.channel.send( "You punched the air, its useless.")
+            await message.channel.send( "The air is offended that you punched it, so it obliterates you.")
+        elif(value > 1 and value <= 5):
+            await message.channel.send( "You punch the air, the air judges you for it.")
+        elif(value > 5 and value <= 10):
+            await message.channel.send( "You punch the air, it is mildly inconvenienced by your show of violence.")
+        elif(value > 10 and value <= 18):
+            await message.channel.send( "You realize punching the air is not the solution, so you stab it instead.  Nothing happens.")
+        elif(value == 20 or value == 19):
+            await message.channel.send( "***NOBODY EXPECTS THE SPANISH INQUISITION!***")
     elif message.content.lower().startswith('!questaward') and message.author.top_role >= adminRole:
         #grants an achievement.
         parse = message.content.split("-")
@@ -1584,10 +1599,10 @@ async def createQuestTable():
         new_quest = QuestsList(questId = 25, description = "Submit daily for 100 days", completion = 100, award = 1200, mode = "auto",reset = True)
         session.add(new_quest)
     if(getDBQuestItem(26) == None):
-        new_quest = QuestsList(questId = 26, description = "Submit daily for 200 days", completion = 200, award = 4200, mode = "auto",reset = True)
+        new_quest = QuestsList(questId = 26, description = "Submit daily for 200 days", completion = 200, award = 2500, mode = "auto",reset = True)
         session.add(new_quest)
     if(getDBQuestItem(27) == None):
-        new_quest = QuestsList(questId = 27, description = "Submit daily for 365 days", completion = 365, award = 6000, mode = "auto",reset = True)
+        new_quest = QuestsList(questId = 27, description = "Submit daily for 365 days", completion = 365, award = 4000, mode = "auto",reset = True)
         session.add(new_quest)
 
     #quests that will be marked by admins as they cannot be tracked by the admins
