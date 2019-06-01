@@ -1265,7 +1265,7 @@ async def handleSubmit(message, userToUpdate, url):
                 next_level_required_xp = current_level*10 + 50
                 new_xp_total = current_xp + xp_gained
                 #if we levelled up, increase level
-                if new_xp_total >= next_level_required_xp:
+                while new_xp_total >= next_level_required_xp:
                     current_level = current_level + 1
                     new_xp_total = new_xp_total - next_level_required_xp
                     db_user.level = str(current_level)
