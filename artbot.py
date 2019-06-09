@@ -37,17 +37,16 @@ session = DBSession() #session.commit() to store data, and session.rollback() to
 
 spreadsheet_schema = {"Discord Name":1,"Start Date":2,"Level":3,"Currency":4,"Streak":5,"Streak Expires":6,"Submitted Today?":7,"Raffle Prompt Submitted":8,"Week Team":9,"Month Team":10,"Referred By":11,"Prompts Added":12,"Current XP":13}
 months = {1:"January",2:"February",3:"March",4:"April",5:"May",6:"June",7:"July",8:"August",9:"September",10:"October",11:"November",12:"December"}
-nonach_roles = ["0+ Streak","5+ Streak","10+ Streak","15+ Streak","20+ Streak","25+ Streak","30+ Streak","60+ Streak","90+ Streak","120+ Streak","150+ Streak","200+ Streak","250+ Streak","300+ Streak","Admins","Raffle","Community Admins","Type !help for info","@everyone","NSFW Artist", "Artists", "Head Admins", "999+ Streak", "2000+ Streak", "Override (5+)", "Override (10+)", "Override (15+)", "Override (20+)", "Override (25+)", "Override (30+)", "Override (60+)", "Override (90+)", "Override (120+)", "Override (150+)", "Override (200+)", "Override (250+)", "Override (300+)"]
+nonach_roles = ["0+ Streak","5+ Streak","10+ Streak","15+ Streak","20+ Streak","25+ Streak","30+ Streak","60+ Streak","90+ Streak","120+ Streak","150+ Streak","200+ Streak","250+ Streak","300+ Streak","Admins","Raffle","Community Admins","Type !help for info","@everyone","NSFW Artist", "Artists", "Head Admins", "999+ Streak", "2000+ Streak", "Override (5+)", "Override (10+)", "Override (15+)", "Override (20+)", "Override (25+)", "Override (30+)", "Override (60+)", "Override (90+)", "Override (120+)", "Override (150+)", "Override (200+)", "Override (250+)", "Override (300+)", "New Artist"]
 override_roles = ["Override (5+)", "Override (10+)", "Override (15+)", "Override (20+)", "Override (25+)", "Override (30+)", "Override (60+)", "Override (90+)", "Override (120+)", "Override (150+)", "Override (200+)", "Override (250+)", "Override (300+)"]
 streak_roles = ["0+ Streak","5+ Streak","10+ Streak","15+ Streak","20+ Streak","25+ Streak","30+ Streak","60+ Streak","90+ Streak","120+ Streak","150+ Streak","200+ Streak","250+ Streak","300+ Streak", "999+ Streak", "2000+ Streak"]
 eight_ball = ["It is certain.","It is decidedly so.","Without a doubt.","Yes, definitely.","You may rely on it.","As I see it, yes.","Most likely.","Outlook good.","Yes.","Signs point to yes.","Reply hazy try again.","Ask again later.","Better not tell you now.","Cannot predict now.","Concentrate and ask again.","Don't count on it.","My reply is no.","My sources say no.","Outlook not so good.","Very doubtful."]
 
-channel_ids = {"class_1":241060721994104833, "class_2":236678008562384896}
 tapeGuild = 'no server'
 botChannel = 'no channel'
 adminRole = 'no role'
 
-### Art bot by Whatsapokemon and Ciy 2.0
+### Art bot by Whatsapokemon and MarshBreeze 2.0
 ### Simple bot for Discord designed to manage image collection.
 
 logging.basicConfig(level = logging.INFO)
@@ -55,7 +54,7 @@ logging.basicConfig(level = logging.INFO)
 client = discord.Client()
 
 ###LIVE/DEBUG SETTINGS####
-live = False
+live = True
 if(live):
     guildName = 'The Art Plaza Extravaganza'
     botChannelName = 'bot-channel'
@@ -63,10 +62,10 @@ if(live):
     adoreEmoji = 284820985767788554
     adminRole = "Admins"
 else:
-    guildName = 'Marsh Palace'
-    botChannelName = 'bot-testing'
-    submitChannels = [271516310314156042,284618270659575818,386395766505340939,317414355501187072]
-    adoreEmoji = 538580881225285652
+    guildName = 'WhatsaTestServer'
+    botChannelName = 'botspam'
+    submitChannels = [271516310314156042,284618270659575818,386395766505340939]
+    adoreEmoji = 316118272548274176
     adminRole = "Admins"
 ##########################
 
@@ -159,6 +158,7 @@ async def on_message(message):
         db_user = getDBUser(message.author.id)
         serv = message.guild
         foundrole = discord.utils.find(lambda r: r.name == 'Artists', message.author.roles)
+        na = discord.utils.find(lambda r: r.name == 'New Artist', message.author.roles)
 
         #add a new user if there's no registered user
         if (db_user == None):
@@ -176,15 +176,14 @@ async def on_message(message):
                 if rank.name == "0+ Streak":
                     await message.author.add_roles(rank)
             for rank in serv.roles:
-                if rank.name == "Artists":
+                if rank.name == "New Artist":
                     await message.author.add_roles(rank)
             #commit session
             session.commit()
             await message.channel.send( "```diff\n+ Successfully registered!\n```")
-        elif (db_user != None and foundrole == None):
-            for rank in serv.roles:
-                if rank.name == "Artists":
-                    await message.author.add_roles( rank)
+        elif (db_user != None and foundrole == None and na == None):
+            aRole = discord.utils.find(lambda r: r.name == 'Artists', serv.roles)
+            await message.author.add_roles( aRole)
             await message.channel.send( "```Markdown\n# You're registered, I'll give you your Artist role back!\n```")
         else:
             await message.channel.send( "```Markdown\n# You're already registered!\n```")
@@ -210,16 +209,8 @@ async def on_message(message):
         #try to find user in database using id
         db_user = getDBUser(message.author.id)
 
-        #quest check
-        db_quester = getDBQuestMember(message.author.id,0)
-
         #if we found the user in our spreadsheet
         if (db_user != None):
-            #update the stats quest
-            #method to update a user based on id and quest
-            if(db_quester != None):
-                db_quester.progress = 1
-                await checkQuestCompletion(message.author.id,0)
 
             #then extract individual stats for simplicity
             user_name = db_user.name
@@ -293,6 +284,15 @@ async def on_message(message):
             stats_embed.add_field(name="Submit Status",value=submit_status,inline=True)
             stats_embed.add_field(name="Raffle Status",value=raffle_status,inline=True)
             await message.channel.send(embed=stats_embed)
+            
+            #quest check
+            db_quester = getDBQuestMember(message.author.id,0)
+            #update the stats quest
+            #method to update a user based on id and quest
+            if(db_quester != None):
+                db_quester.progress = 1
+                await checkQuestCompletion(message.author.id,0)
+
         else:
             await message.channel.send("```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
     elif message.content.lower().startswith('!ach') and message.author != message.author.guild.me:
@@ -646,12 +646,8 @@ async def on_message(message):
         await message.channel.send("Shutting down BotRoss, bye byeee~")
         sys.exit(5)
     elif message.content.lower() == "!reset" and (message.author.top_role >= adminRole):
-        await message.channel.send("Resetting BotRoss (assuming Ciy and Whatsa did their job right), bye byeee~")
+        await message.channel.send("Resetting BotRoss (assuming Whatsa did his job right), bye byeee~")
         sys.exit()
-    elif message.content.lower().startswith("!embedtest") and (message.author.top_role >= adminRole):
-        testembed.set_thumbnail(url=message.author.avatar_url)
-        testembed.add_field(name="Test_Field",value="Ciy is a butt.",inline=True)
-        await message.channel.send( embed=testembed)
     elif message.content.lower().startswith("!getraffle") and (message.author.top_role >= adminRole):
         raffleString = "Raffle Submissions!\n==================="
         members = session.query(User).all()
@@ -934,13 +930,12 @@ async def on_message(message):
 
         for curr_member in members:
             db_quests = session.query(QuestsList)
-
+            db_questers = getDBQuestMember(curr_member.id,'all') #we can query the database for all the member's quests
+            
             for quest in db_quests:
-                db_quester = getDBQuestMember(curr_member.id,quest.questId)
-
-                if(db_quester == None):
+                if(next( (q for q in db_questers if q.questId==quest.questId), None) == None): #examine if the user already has the quest in the list
                     new_quester = QuestsMembers(usrId = curr_member.id, questId = quest.questId, name=curr_member.name,completed = False, progress = 0)
-                    session.add(new_quester)
+                    session.add(new_quester) #otherwise we add it
 
         await message.channel.send( "```diff\n+ Successfully updated your quests list!\n```")
         session.commit()
@@ -1075,18 +1070,28 @@ async def on_message(message):
                 await message.channel.send( "```diff\n+ Your progress on quests has been sent!\n```")
             else:
                 db_quests = session.query(QuestsList)
-                await message.channel.send( "```diff\n+ Please wait as we send you the quest progress data...\n```")
                 quest_card = "```Python\n @{0} - Quests\n# Note: Completed ones are in green and denoted with a '+'.\n```\n```diff\n".format(message.author.name)
-                for quests in db_quests:
-                    db_quester = getDBQuestMember(message.author.id,quests.questId)
-                    if(db_quester.completed == True):
-                        quest_card = quest_card + '+ Quest {0}\n'.format(quests.questId)
+                db_questers = getDBQuestMember(message.author.id,'all')
+                for quest in db_quests:
+                    completed = next( (q for q in db_questers if q.questId==quest.questId), None).completed
+                    if(completed == True):
+                        quest_card = quest_card + '+ Quest {0}\n'.format(quest.questId)
                     else:
-                        quest_card = quest_card + '# Quest {0}\n'.format(quests.questId)
+                        quest_card = quest_card + '# Quest {0}\n'.format(quest.questId)
                 quest_card = quest_card + "```"
 
                 await message.channel.send(quest_card)
-
+    elif message.content.lower().startswith('!newartists') and message.author.top_role >= adminRole:
+        #set users to New Artist if they have 0 total submits
+        for user in message.guild.members:
+            aRole = discord.utils.find(lambda r: r.name == 'Artists', user.roles)
+            if(aRole):
+                db_user = getDBUser(user.id)
+                if(db_user):
+                    if(db_user.totalsubmissions < 1):
+                        print("replacing role for {0}".format(user.name))
+                        await user.remove_roles(aRole)
+                        await user.add_roles(discord.utils.find(lambda r: r.name == 'New Artist', message.guild.roles))                
     elif message.content.lower().startswith('!battle') and message.channel == botChannel and message.author != message.author.guild.me:
 
         value = random.randint(1,20)
@@ -1224,10 +1229,8 @@ async def handleSubmit(message, userToUpdate, url):
     streakdate = "{0}-{1}-{2}".format(potentialstreak.month, potentialstreak.day, potentialstreak.year)
     print('getting filepath to download for ' + str(userToUpdate.name))
     filepath = os.getcwd()+"/"+today
-    print('boob')
     #try to find user in database using id
     db_user = getDBUser(userToUpdate.id)
-    print('boop')
     #first find if we have  the user in our list
 
     if (db_user == None):
@@ -1241,12 +1244,7 @@ async def handleSubmit(message, userToUpdate, url):
             await message.channel.send( "```diff\n- You seem to have submitted something today already!\n```")
         #otherwise, do the submit
         else:
-            print('I am here')
             if url.lower().endswith('.png') or url.lower().endswith('.jpg') or url.lower().endswith('.gif') or url.lower().endswith('.jpeg'):
-                #if message.channel.id == channel_ids['class_2']:
-                #print('starting file download')
-                #os.system('wget {0} -P {1}'.format(url, filepath))
-                #print('finishing file download')
 
                 #update the submit quest
                 db_quester = getDBQuestMember(message.author.id,1)
@@ -1260,7 +1258,9 @@ async def handleSubmit(message, userToUpdate, url):
                 current_streak = db_user.streak
                 new_streak = current_streak+1
                 current_xp = db_user.currentxp
-                xp_gained = 10 + int(math.floor(current_streak/4))
+                xp_gained = 10
+                if(current_streak > 0):
+                    xp_gained = xp_gained + round(math.log2(current_streak)*2)
                 current_level = db_user.level
                 next_level_required_xp = current_level*10 + 50
                 new_xp_total = current_xp + xp_gained
@@ -1290,6 +1290,14 @@ async def handleSubmit(message, userToUpdate, url):
                 #finally, add an adore to the submission
                 await message.add_reaction( adoreEmoji)
                 print("submit complete")
+                #check if we can make the a new artist a full artist
+                aRole = discord.utils.find(lambda r: r.name == 'Artists', userToUpdate.roles)
+                if(aRole == None):
+                    na = discord.utils.find(lambda r: r.name == 'New Artist', userToUpdate.roles)
+                    if(na):
+                        await userToUpdate.remove_roles(na)
+                        await userToUpdate.add_roles(discord.utils.find(lambda r: r.name == 'Artists', message.guild.roles))
+                
             else:
                 await message.channel.send( "```diff\n- Not a png, jpg, or gif file```")
 
@@ -1683,12 +1691,13 @@ def getDBContest(number): #gets the database user based on the user's ID
 def getDBQuestMember(number,quest): #gets the database user based on the user's ID and the quest number
     db_questmember = None
     try: #try to find user in database using id
-        db_questmember = session.query(QuestsMembers).filter(QuestsMembers.usrId == number).filter(QuestsMembers.questId == quest).one()
+        if quest == "all":
+            db_questmember = session.query(QuestsMembers).filter(QuestsMembers.usrId == number)
+        else:
+            db_questmember = session.query(QuestsMembers).filter(QuestsMembers.usrId == number).filter(QuestsMembers.questId == quest).one()
     except sqlalchemy.orm.exc.NoResultFound:
         print('No user quest found, probably not registered')
-    except sqlalchemy.orm.exc.MultipleResultsFound:
-        print('Multiple quest instances for the user found, something is really broken!')
-    return db_questmember
+    return db_questmember #may be multiple if we request all
 
 def getDBQuestItem(number): #gets the database user based on the user's ID
     db_questitem = None
