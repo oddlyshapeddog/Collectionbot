@@ -1142,7 +1142,6 @@ async def on_message(message):
 
 
 
-
 async def updateRoles(serv):
     #get all rows and put into memory
     for dbUser in session.query(User).all():
@@ -1150,8 +1149,9 @@ async def updateRoles(serv):
         member = False #default value
         #if the default value is retained (we didn't find a user)
         #then do nothing. This caused the old bug
+        
         for person in serv.members:
-            if dbUser.id == person.id:
+            if str(dbUser.id) == str(person.id):
                 member = person
         #if we found a member,
         if(member != False):
@@ -1736,4 +1736,4 @@ scheduler.start()
 if(live):
     client.run('') #botross account
 else:
-    client.run('NTc2MjE4Mjk0MDUxMTQzNzAw.XNTYiQ.dBB--rLXp56FIVPrFySoUAjVs2A') #marsh test account
+    client.run('') #test account
