@@ -16,9 +16,6 @@ from datetime import date, timedelta, time, datetime
 #declaration for User class is in here
 from create_databases import Base, User, Contest, QuestsMembers, QuestsList
 
-testServer = 244805504235339777
-testChannel = 386395766505340939
-
 async def testCommands(session, config, client, message, live):
 	if(live): return #We don't want to do this on a live server
 
