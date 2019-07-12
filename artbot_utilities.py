@@ -1,3 +1,4 @@
+import json
 #SQLalchemy stuff
 import sqlalchemy
 from sqlalchemy import create_engine
@@ -258,16 +259,73 @@ async def updateRoles(session, config,serv):
 #This class stores the config information for the artbot.
 #Keep this at bottom
 class Config():
+	live = False
 	spreadsheet_schema = {}
 	months = {}
 	nonach_roles = []
 	override_roles = []
 	streak_roles= []
 	eight_ball = []
-	tapeGuild = 'no server'
-	botChannel = 'no channel'
-	adminRole = 'no role'
-	guildName = 'Placeholder'
+	tapeGuild = ''
+	botChannel = ''
+	adminRole = ''
+	adminRoleName = 'no-role'
+	guildName = 'no-guild'
 	botChannelName = 'no-channel'
 	submitChannels = []
 	adoreEmoji = 0
+	adoreEmojiID = 0
+	discordKey = ''
+	
+	def LoadFromFile(self, filename):
+		data={}
+		with open(filename) as json_file:  
+			data = json.load(json_file)
+		#read generic data
+		self.spreadsheet_schema = data['all_config']['spreadsheet_schema']
+		self.months = data['all_config']['months']
+		self.nonach_roles = data['all_config']['nonach_roles']
+		self.override_roles = data['all_config']['override_roles']
+		self.streak_roles = data['all_config']['streak_roles']
+		self.eight_ball = data['all_config']['eight_ball']
+		#configure live or test data
+		key = 'live_config' if self.live == True else 'test_config'
+		self.adminRoleName = data[key]['adminRoleName']
+		self.guildName = data[key]['guildName']
+		self.botChannelName = data[key]['botChannelName']
+		self.submitChannels = data[key]['submitChannels']
+		self.adoreEmojiID = data[key]['adoreEmojiID']
+		self.discordKey = data[key]['discordKey']
+		
+	def WriteToFile(self, filename):
+		data = {}
+		#generic config for both live and test
+		data['all_config'] = {
+			'spreadsheet_schema' : self.spreadsheet_schema,
+			'months' : self.months,
+			'nonach_roles' : self.nonach_roles,
+			'override_roles' : self.override_roles,
+			'streak_roles' : self.streak_roles,
+			'eight_ball' : self.eight_ball
+		}
+		#data specific to live
+		data['live_config'] = {
+			'adminRoleName' : self.adminRoleName,
+			'guildName' : self.guildName,
+			'botChannelName' : self.botChannelName,
+			'submitChannels' : self.submitChannels,
+			'adoreEmojiID' : self.adoreEmojiID,
+			'discordKey' : ' '
+		}
+		#data specific to test
+		data['test_config'] = {
+			'adminRoleName' : self.adminRoleName,
+			'guildName' : self.guildName,
+			'botChannelName' : self.botChannelName,
+			'submitChannels' : self.submitChannels,
+			'adoreEmojiID' : self.adoreEmojiID,
+			'discordKey' : ' '
+		}
+		with open(filename, 'w') as outfile:  
+			json.dump(data, outfile, indent=4)
+			

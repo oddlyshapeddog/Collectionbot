@@ -305,10 +305,10 @@ async def handleCommands(session, config, client, message):
 						db_user.currency = new_buyer_balance
 						db_user.expiry = potentialstreak
 						session.commit()
-						await message.channel.send( "```diff\n+ Vacation purchased, your streak now expires on {0} {1}, {2}. Bon Voyage!\n```".format(config.months[potentialstreak.month],potentialstreak.day,potentialstreak.year))
+						await message.channel.send( "```diff\n+ Vacation purchased, your streak now expires on {0} {1}, {2}. Bon Voyage!\n```".format(config.months[str(potentialstreak.month)],potentialstreak.day,potentialstreak.year))
 					else:
 						await message.channel.send( "```Markdown\n# Transaction cancelled.\n```")
-				except:
+				except Exception as e:
 					print("transaction with {0} timed out".format(message.author.name))
 			else:
 				await message.channel.send( "```Markdown\n- Not enough credits. {0} needed, you have {1}```".format(price, buyer_amount))

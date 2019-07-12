@@ -16,8 +16,8 @@ from datetime import date, timedelta, time, datetime
 #declaration for User class is in here
 from create_databases import Base, User, Contest, QuestsMembers, QuestsList
 
-async def testCommands(session, config, client, message, live):
-	if(live): return #We don't want to do this on a live server
+async def testCommands(session, config, client, message):
+	if(config.live): return #We don't want to do this on a live server
 
 	message = await config.botChannel.send( "TEST MESSAGE")
 	message.content = "!REGISTER"

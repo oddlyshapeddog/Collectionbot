@@ -38,17 +38,9 @@ DBSession = sessionmaker(bind=engine)
 session = DBSession() #session.commit() to store data, and session.rollback() to discard changes
 
 config = Config()
+config.live = False #Use this flag to change between live and test config
 
-config.spreadsheet_schema = {"Discord Name":1,"Start Date":2,"Level":3,"Currency":4,"Streak":5,"Streak Expires":6,"Submitted Today?":7,"Raffle Prompt Submitted":8,"Week Team":9,"Month Team":10,"Referred By":11,"Prompts Added":12,"Current XP":13}
-config.months = {1:"January",2:"February",3:"March",4:"April",5:"May",6:"June",7:"July",8:"August",9:"September",10:"October",11:"November",12:"December"}
-config.nonach_roles = ["0+ Streak","5+ Streak","10+ Streak","15+ Streak","20+ Streak","25+ Streak","30+ Streak","60+ Streak","90+ Streak","120+ Streak","150+ Streak","200+ Streak","250+ Streak","300+ Streak","Admins","Raffle","Community Admins","Type !help for info","@everyone","NSFW Artist", "Artists", "Head Admins", "999+ Streak", "2000+ Streak", "Override (5+)", "Override (10+)", "Override (15+)", "Override (20+)", "Override (25+)", "Override (30+)", "Override (60+)", "Override (90+)", "Override (120+)", "Override (150+)", "Override (200+)", "Override (250+)", "Override (300+)", "New Artist"]
-config.override_roles = ["Override (5+)", "Override (10+)", "Override (15+)", "Override (20+)", "Override (25+)", "Override (30+)", "Override (60+)", "Override (90+)", "Override (120+)", "Override (150+)", "Override (200+)", "Override (250+)", "Override (300+)"]
-config.streak_roles = ["0+ Streak","5+ Streak","10+ Streak","15+ Streak","20+ Streak","25+ Streak","30+ Streak","60+ Streak","90+ Streak","120+ Streak","150+ Streak","200+ Streak","250+ Streak","300+ Streak", "999+ Streak", "2000+ Streak"]
-config.eight_ball = ["It is certain.","It is decidedly so.","Without a doubt.","Yes, definitely.","You may rely on it.","As I see it, yes.","Most likely.","Outlook good.","Yes.","Signs point to yes.","Reply hazy try again.","Ask again later.","Better not tell you now.","Cannot predict now.","Concentrate and ask again.","Don't count on it.","My reply is no.","My sources say no.","Outlook not so good.","Very doubtful."]
-
-config.tapeGuild = 'no server'
-config.botChannel = 'no channel'
-config.adminRole = 'no role'
+config.LoadFromFile('config.txt')
 
 ### Art bot by Whatsapokemon and MarshBreeze 2.0
 ### Simple bot for Discord designed to manage image collection.
@@ -57,27 +49,10 @@ logging.basicConfig(level = logging.ERROR)
 
 client = discord.Client()
 
-###LIVE/DEBUG SETTINGS####
-live = False
-if(live):
-	config.guildName = 'The Art Plaza Extravaganza'
-	config.botChannelName = 'bot-channel'
-	config.submitChannels = [236678008562384896, 302915168801783810, 241060721994104833, 313945720447303680]
-	config.adoreEmoji = 284820985767788554
-	config.adminRole = "Admins"
-else:
-	config.guildName = 'WhatsaTestServer'
-	config.botChannelName = 'super-exclusive-club'
-	config.submitChannels = [271516310314156042,284618270659575818,386395766505340939]
-	config.adoreEmoji = 316118272548274176
-	config.adminRole = "Admins"
-##########################
-
-
 @client.event
 async def on_ready():
 	global config
-	print('Bot Online.')
+	print('Bot Online. using {0} configuration'.format('LIVE' if config.live else 'TEST'))
 	print(client.user.name)
 	print(client.user.id)
 	print('------')
@@ -87,9 +62,9 @@ async def on_ready():
 	config.botChannel = discord.utils.find(lambda c: c.name == config.botChannelName, config.tapeGuild.channels)
 	print("bot channel set to " + config.botChannel.name)
 	#admin role, admin actions require at least this role (or any with higher priority)
-	config.adminRole = discord.utils.find(lambda r: r.name == config.adminRole, config.tapeGuild.roles)
+	config.adminRole = discord.utils.find(lambda r: r.name == config.adminRoleName, config.tapeGuild.roles)
 	print("admin role set to " + config.adminRole.name)
-	config.adoreEmoji = discord.utils.find(lambda e: e.id == config.adoreEmoji, config.tapeGuild.emojis)
+	config.adoreEmoji = discord.utils.find(lambda e: e.id == config.adoreEmojiID, config.tapeGuild.emojis)
 	print("adore emoji set to " + config.adoreEmoji.name)
 
 @client.event
@@ -140,7 +115,7 @@ async def on_reaction_remove(reaction, user):
 @client.event
 async def on_message(message):
 	if message.content.lower() == "+test":
-		await testCommands(session, config, client, message, live)
+		await testCommands(session, config, client, message)
 	else:
 		await handleCommands(session, config, client, message)
 
@@ -256,7 +231,4 @@ scheduler.add_job(roletask, 'cron', hour='1,4,7,10,13,16,19,21')
 #run housekeeping at 7am UTC
 scheduler.add_job(housekeeper, 'cron', hour=7)
 scheduler.start()
-if(live):
-	client.run('') #botross account
-else:
-	client.run('') #whatsa test account
+client.run(config.discordKey) #Runs live or not live depending on flag set at top of file
