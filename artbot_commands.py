@@ -574,7 +574,7 @@ async def handleCommands(session, config, client, message):
 					if(curr_member.raffle == 1):
 						numRaffle = numRaffle+1
 						curr_member.raffle = 0
-						await resetQuestProgress(curr_member.id,2)
+						await resetQuestProgress(session, curr_member.id,2)
 				#commit all changes to the sheet at once
 				session.commit()
 				print("raffle reset finished")
@@ -872,7 +872,7 @@ async def handleCommands(session, config, client, message):
 							confirm = await confirmDecision(client, message.author)
 							if confirm:
 								await message.channel.send( "```diff\n+ you have reset your status on quest {0}!\n```".format(questnum))
-								await resetQuestProgress(db_user.id, questnum)
+								await resetQuestProgress(session, db_user.id, questnum)
 								db_user.currency = db_user.currency - 500
 								session.commit()
 							else:
@@ -1031,7 +1031,7 @@ async def normalSubmit(session, config, message, userToUpdate):
 	print(str(userToUpdate.name) + "'s url - " + url)
 
 	print('normal submitting for ' + str(userToUpdate.name) + " | url - " + url)
-	await handleSubmit(message, userToUpdate, url)
+	await handleSubmit(session, config, message, userToUpdate, url)
 
 
 async def handleSubmit(session, config, message, userToUpdate, url):
@@ -1248,7 +1248,7 @@ async def createQuestTable(session):
 
 	session.commit()
 
-async def resetQuestProgress(usrId,questId):
+async def resetQuestProgress(session, usrId,questId):
 
 	db_quester = getDBQuestMember(session,usrId,questId)
 	if(db_quester != None):
