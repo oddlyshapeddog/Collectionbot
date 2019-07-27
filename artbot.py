@@ -38,7 +38,7 @@ DBSession = sessionmaker(bind=engine)
 session = DBSession() #session.commit() to store data, and session.rollback() to discard changes
 
 config = Config()
-config.live = False #Use this flag to change between live and test config
+config.live = True #Use this flag to change between live and test config
 
 config.LoadFromFile('config.txt')
 
@@ -212,8 +212,6 @@ async def housekeeper():
 					dbQuester.progress = dbQuester.progress + 1
 				elif(dbQuester.progress > 0 and curr_member.submitted == False):
 					dbQuester.progress = 0
-				else:
-					print("FAILURE TO CHECK PROPERLY")
 
 		#Checks for quest completion here
 		await checkQuests(session,config,curr_member.id)
@@ -229,6 +227,6 @@ async def housekeeper():
 #do role update every 3 hours
 scheduler.add_job(roletask, 'cron', hour='1,4,7,10,13,16,19,21')
 #run housekeeping at 7am UTC
-scheduler.add_job(housekeeper, 'cron', hour=7)
+scheduler.add_job(housekeeper, 'cron', hour=7) #hour=7
 scheduler.start()
 client.run(config.discordKey) #Runs live or not live depending on flag set at top of file

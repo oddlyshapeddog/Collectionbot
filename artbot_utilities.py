@@ -5,6 +5,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import update
 import time
+import math
 from datetime import date, timedelta, time, datetime
 #declaration for User class is in here
 from create_databases import Base, User, Contest, QuestsMembers, QuestsList
@@ -166,7 +167,7 @@ async def checkQuests(session,config,usrId):
 	#checks through all auto quests per user
 	autoQuests = getDBAutoQuests(session)
 	for x in autoQuests:
-		await checkQuestCompletion(usrId,config,x.questId)
+		await checkQuestCompletion(session,config, usrId,x.questId)
 
 
 async def checkQuestCompletion(session,config, usrId,questId):
