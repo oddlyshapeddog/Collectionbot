@@ -4,6 +4,7 @@ import sqlalchemy
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import update
+import discord
 import time
 import math
 from datetime import date, timedelta, time, datetime
