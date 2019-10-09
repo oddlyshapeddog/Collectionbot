@@ -42,7 +42,7 @@ config.live = True #Use this flag to change between live and test config
 
 config.LoadFromFile('config.txt')
 
-### Art bot by Whatsapokemon and MarshBreeze 2.0
+### Art bot by Ciy Whatsapokemon and MarshBreeze 2.0
 ### Simple bot for Discord designed to manage image collection.
 
 logging.basicConfig(level = logging.ERROR)
