@@ -140,7 +140,7 @@ async def testCommands(session, config, client, message):
 		t2 = loop.create_task(sendYes(config))
 		await t1
 		await t2
-		asyncio.sleep(3)
+		await asyncio.sleep(3)
 		if(me.currency >= 10000): raise Exception()
 		else: print("!VACATION FUNCTION PASSED")
 	except Exception as e: 
@@ -159,7 +159,7 @@ async def testCommands(session, config, client, message):
 		t2 = loop.create_task(sendYes(config))
 		await t1
 		await t2
-		asyncio.sleep(3)
+		await asyncio.sleep(3)
 		if(me.currency >= 10000): raise Exception()
 		else: print("!BUY FUNCTION PASSED")
 	except Exception as e: 
@@ -179,7 +179,7 @@ async def testCommands(session, config, client, message):
 		t2 = loop.create_task(sendYes(config))
 		await t1
 		await t2
-		asyncio.sleep(3)
+		await asyncio.sleep(3)
 		if(discord.utils.get(config.tapeGuild.me.roles, name="Override (10+)") == None): raise Exception()
 		else: print("!OVERRIDE FUNCTION PASSED")
 	except Exception as e: 
@@ -197,7 +197,7 @@ async def testCommands(session, config, client, message):
 		t2 = loop.create_task(sendYes(config))
 		await t1
 		await t2
-		asyncio.sleep(3)
+		await asyncio.sleep(3)
 		if(me.decaywarning != False): raise Exception("Streakwarning didn't turn off")
 		message.content = "!STREAKWARNING ON"
 		#send the !streakwarning command and the !yes response in two async threads
@@ -206,7 +206,7 @@ async def testCommands(session, config, client, message):
 		t2 = loop.create_task(sendYes(config))
 		await t1
 		await t2
-		asyncio.sleep(3)
+		await asyncio.sleep(3)
 		if(me.decaywarning != True): raise Exception("Streakwarning didn't turn on")
 		
 		print("!STREAKWARNING FUNCTION PASSED")

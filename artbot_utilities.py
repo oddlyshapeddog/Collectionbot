@@ -244,10 +244,10 @@ async def updateRoles(session, config,serv):
 
 			#identify roles they should not have
 			otherRoles = [r for r in member.roles if r.name in config.streak_roles]
-			print(otherRoles)
+			#print(otherRoles)
 			if(streakRank != None and streakRank in otherRoles):
 				otherRoles.remove(streakRank)
-			print(otherRoles)
+			#print(otherRoles)
 			#remove the roles they shouldn't have
 			if(len(otherRoles) > 0):
 				await member.remove_roles( *otherRoles)
@@ -255,7 +255,7 @@ async def updateRoles(session, config,serv):
 			if(streakRank != None and streakRank not in member.roles):
 				await member.add_roles(streakRank)
 				print("updating roles for {0} with streak {1}".format(member, streak))
-
+	print('Updating Roles Completed')
 
 
 #This class stores the config information for the artbot.

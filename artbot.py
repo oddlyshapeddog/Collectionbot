@@ -10,6 +10,7 @@ import pytz
 from artbot_utilities import *
 from artbot_commands import *
 from artbot_tests import *
+import threading
 
 #SQLalchemy stuff
 import sqlalchemy
@@ -42,12 +43,12 @@ config.live = True #Use this flag to change between live and test config
 
 config.LoadFromFile('config.txt')
 
-### Art bot by Ciy Whatsapokemon and MarshBreeze 2.0
+### Art bot by Whatsapokemon and MarshBreeze 2.0
 ### Simple bot for Discord designed to manage image collection.
 
 logging.basicConfig(level = logging.ERROR)
 
-client = discord.Client()
+client = discord.Client(fetch_offline_members=True, heartbeat_timeout=90.0)
 
 @client.event
 async def on_ready():
@@ -128,15 +129,69 @@ async def roletask():
 	await updateRoles(session, config,config.tapeGuild)
 	await config.botChannel.send( "```diff\n+ Updating roles was a happy little success!\n```")
 
-async def housekeeper():
+def housekeeper_start():
+	thread = threading.Thread(target=housekeeper_create_loop)
+	thread.start()
+	
+def housekeeper_create_loop():
+	loop = asyncio.new_event_loop()
+	asyncio.set_event_loop(loop)
+	
+	engine = create_engine('sqlite:///TAPE_Database.db')
+	Base.metadata.bind = engine
+	DBSession = sessionmaker(bind=engine)
+	#create new database session
+	new_session = DBSession()
+	loop.run_until_complete(housekeeper(new_session))
+
+async def housekeeper(session):
 	db_contest = getDBContest(session,0)
 	curdate = datetime.utcnow()
 	today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
-
+	
 	#get all rows and put into memory
 	members = session.query(User).all()
 	print("Housekeeping on " + str(len(members)) + " rows on " + today)
+	print("Doing quest completions")
+	
+	##if False:
+	for curr_member in members:
+		member_quests = getDBQuestMember(session, curr_member.id, "all")
+		#print('Checking quest completion for {0}'.format(curr_member.name))
+		
+		if member_quests.count() > 0:
+			for quest in member_quests:
+				# raffle check
+				if(quest.questId == 2):
+					if(quest.completed == False and curr_member.raffle == True):
+						quest.progress = 1
+				# submit x amount of pieces quests
+				# 3-9
+				if (quest.questId >= 3 and quest.questId <= 9):
+					if(quest.completed == False):
+						quest.progress = curr_member.totalsubmissions
+				# attain x amount of streak score
+				# 10-22
+				if (quest.questId >= 10 and quest.questId <= 22):
+					if(quest.completed == False):
+						quest.progress = curr_member.highscore
+				# update dailies here (23-27) 
+				if (quest.questId >= 23 and quest.questId <= 27):
+					if(quest.completed == False):
+						if(quest.progress == 0 and curr_member.submitted == True):
+							quest.progress = 1
+						elif(quest.progress > 0 and curr_member.submitted == True):
+							quest.progress = quest.progress + 1
+						elif(quest.progress > 0 and curr_member.submitted == False):
+							quest.progress = 0
+	
+	print("Doing submitted status reset")
+	#reset all member's submitted status
+	stmt = update(User).values(submitted=0)
+	session.execute(stmt)
+	session.commit()
 
+	print("Contest block")
 	if(db_contest != None):
 		if(db_contest.mode == 2):
 			days_left = (db_contest.end - curdate.date()).days
@@ -146,9 +201,20 @@ async def housekeeper():
 				db_contest.prompt = "The contest is closed, please wait until further announcements."
 				db_contest.mode = 1
 
+	#commit all changes to the sheet at once
+	session.commit()
+	print("housekeeping finished")
 
+async def decayFunction():
+	members = session.query(User).all()
+	curdate = datetime.utcnow()
+	today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
+	
+	print("Decay")
+	warn_count = 0;
+	decay_count = 0;
 	for curr_member in members:
-		print('housekeeping member {0}'.format(curr_member.name))
+		#print('housekeeping member {0}'.format(curr_member.name))
 		# Update in batch
 		#set user in beginning if its needed to PM a user
 		user = discord.utils.get(client.get_all_members(), id=int(curr_member.id))
@@ -158,75 +224,47 @@ async def housekeeper():
 			if(curr_member.decaywarning == True and curr_member.streak > 0):
 				if(days_left == 3):
 					try:
+						warn_count=warn_count+1
 						await user.send("You have 3 days until your streak begins to expire!\nIf you want to disable these warning messages then enter the command streakwarning off in the #bot-channel")
 					except:
-						print('couldn\'t send 3day message')
+						print('couldn\'t send 3day message to ' + curr_member.name)
 				elif(days_left == 1):
 					try:
+						warn_count=warn_count+1
 						await user.send("You have 1 day until your streak begins to expire!\nIf you want to disable these warning messages then enter the command streakwarning off in the #bot-channel")
 					except:
-						print('couldn\'t send 1day message')
-		else:
-			print('User no longer visible to bot, must be gone')
+						print('couldn\'t send 1day message to ' + curr_member.name)
+		#else:
+			#print('User no longer visible to bot, must be gone')
 
 		#If we're past the streak
 		if((curdate.date() - curr_member.expiry).days >= 0 and curr_member.streak > 0):
-
 			pointReduce = pow(2,(curdate.date() - curr_member.expiry).days+1)
 			#reduce streak by 2^(daysPastStreak+1), until streak is zero
-			print("Removing {0} points from {1}'s streak".format(pointReduce,curr_member.name))
+			#print("Removing {0} points from {1}'s streak".format(pointReduce,curr_member.name))
 			curr_member.streak = max(curr_member.streak-pointReduce,0)
 			#give a pm to warn about streak decay if member has left warnings on
 			if(curr_member.decaywarning == True and user != None):
-				try:
-					await user.send("Your streak has decayed by {0} points! Your streak is now {1}.\nIf you want to disable these warning messages then enter the command streakwarning off in the #bot-channel".format(str(pointReduce),str(curr_member.streak)))
-				except:
-					print('couldn\'t  send decay message')
+				decay_count=decay_count+1
+				await user.send("Your streak has decayed by {0} points! Your streak is now {1}.\nIf you want to disable these warning messages then enter the command streakwarning off in the #bot-channel".format(str(pointReduce),str(curr_member.streak)))
+				
+	print("warned " + str(warn_count) + " and told " + str(decay_count) + " about decay")
+	session.commit() #commit decay changes to database
 
-		# raffle check
-		dbQuester = getDBQuestMember(session, curr_member.id,2)
-		if(dbQuester != None and dbQuester.completed == False and curr_member.raffle == True):
-			dbQuester.progress = 1
-
-		# submit x amount of pieces quests
-		# 3-9
-		for x in range(3,10):
-			dbQuester = getDBQuestMember(session ,curr_member.id,x)
-			if(dbQuester != None and dbQuester.completed == False):
-				dbQuester.progress = curr_member.totalsubmissions
-
-		# attain x amount of streak score
-		# 10-22
-		for x in range(10,23):
-			dbQuester = getDBQuestMember(session,curr_member.id,x)
-			if(dbQuester != None and dbQuester.completed == False):
-				dbQuester.progress = curr_member.highscore
-
-		# update dailies here (23-27)
-		for x in range(23,28):
-			dbQuester = getDBQuestMember(session,curr_member.id,x)
-			if(dbQuester != None and dbQuester.completed == False):
-				if(dbQuester.progress == 0 and curr_member.submitted == True):
-					dbQuester.progress = 1
-				elif(dbQuester.progress > 0 and curr_member.submitted == True):
-					dbQuester.progress = dbQuester.progress + 1
-				elif(dbQuester.progress > 0 and curr_member.submitted == False):
-					dbQuester.progress = 0
-
+async def questCompleteFunction():
+	members = session.query(User).all()
+	print("Checking quests for all members")
+	for curr_member in members:
 		#Checks for quest completion here
 		await checkQuests(session,config,curr_member.id)
-
-	#commit all changes to the sheet at once
-	#reset all member's submitted status
-	stmt = update(User).values(submitted=0)
-	session.execute(stmt)
-	session.commit()
-	print("housekeeping finished")
-
+	print("Finished checking quests")
 
 #do role update every 3 hours
-scheduler.add_job(roletask, 'cron', hour='1,4,7,10,13,16,19,21')
+scheduler.add_job(roletask, 'cron', hour='2,5,8,11,14,17,20,22')
 #run housekeeping at 7am UTC
-scheduler.add_job(housekeeper, 'cron', hour=7) #hour=7
+scheduler.add_job(housekeeper_start, 'cron', hour=7, minute=0) #hour=7
+#warn users about their decay
+scheduler.add_job(decayFunction, 'cron', hour=7, minute=2) #hour=7
+scheduler.add_job(questCompleteFunction, 'cron', hour=7, minute=4) #hour=7
 scheduler.start()
 client.run(config.discordKey) #Runs live or not live depending on flag set at top of file

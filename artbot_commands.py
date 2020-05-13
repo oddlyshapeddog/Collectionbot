@@ -13,16 +13,25 @@ async def handleCommands(session, config, client, message):
 		await message.channel.send( "```Markdown\n {0} has paid their respects.\n```".format(message.author))
 	elif message.content.lower().startswith('!submit'):
 		if (message.channel.id in config.submitChannels):
-			filetypes = [".gif",".jpg",".jpeg",".png"]
-			if ("https://" in message.content.lower() or "http://" in message.content.lower()) and any(u in message.content.lower() for u in filetypes) :
+			#print(message.embeds[0].description)
+			#print(message.embeds[0].thumbnail.url)
+			#print(message.embeds[0].thumbnail.proxy_url)
+			#print(message.embeds[0].provider)
+			filetypes = [".gif",".jpg",".jpeg",".png","twitter.com/","deviantart.com/","derpibooru.org/"]
+			if(("https://" in message.content.lower() or "http://" in message.content.lower()) and (any(u in message.content.lower() for u in filetypes))):
 				# do linksubmit
+				print("link submission")
 				await linkSubmit(session, config, message, message.author)
-			else:
+			elif (message.attachments != None):
 				try:
+					print("normal submission")
 					#normal submit.
 					await normalSubmit(session, config, message, message.author)
 				except:
 					pass
+			
+			else:
+				await message.channel.send( "```diff\n- Invalid submission, need supported link or attachment```")
 		else:
 			await message.channel.send( "`Whoopsies, you can't submit in this channel!`")
 	elif message.content.lower().startswith('!register'):
@@ -421,7 +430,8 @@ async def handleCommands(session, config, client, message):
 			current_streak = db_user.streak
 			new_streak = current_streak-1
 			current_xp = db_user.currentxp
-			xp_lost = 10 + int(math.floor((current_streak)/4))
+			xp_gained = 10
+			xp_lost = 10 + round(math.log2(current_streak-1)*2)
 			current_level = db_user.level
 			last_level_required_xp = (current_level-1)*10 + 50
 			new_xp_total = current_xp - xp_lost
@@ -1054,62 +1064,57 @@ async def handleSubmit(session, config, message, userToUpdate, url):
 			await message.channel.send( "```diff\n- You seem to have submitted something today already!\n```")
 		#otherwise, do the submit
 		else:
-			if url.lower().endswith('.png') or url.lower().endswith('.jpg') or url.lower().endswith('.gif') or url.lower().endswith('.jpeg'):
+			#update the submit quest
+			db_quester = getDBQuestMember(session,message.author.id,1)
+			if(db_quester != None):
+				db_quester.progress = 1
+				await checkQuestCompletion(session,config,message.author.id,1)
 
-				#update the submit quest
-				db_quester = getDBQuestMember(session,message.author.id,1)
-				if(db_quester != None):
-					db_quester.progress = 1
-					await checkQuestCompletion(session,config,message.author.id,1)
-
-				#update all the stats
-				newscore = db_user.totalsubmissions+1
-				newcurrency = db_user.currency+10
-				current_streak = db_user.streak
-				new_streak = current_streak+1
-				current_xp = db_user.currentxp
-				xp_gained = 10
-				if(current_streak > 0):
-					xp_gained = xp_gained + round(math.log2(current_streak)*2)
-				current_level = db_user.level
-				next_level_required_xp = current_level*10 + 50
-				new_xp_total = current_xp + xp_gained
-				#if we levelled up, increase level
-				while new_xp_total >= next_level_required_xp:
-					current_level = current_level + 1
-					new_xp_total = new_xp_total - next_level_required_xp
-					db_user.level = str(current_level)
-					db_user.currentxp = str(new_xp_total)
-					await message.channel.send("```Markdown\n# @{0} Level Up! You are now level {1}!\n```".format(userToUpdate.name,current_level))
-				#otherwise just increase exp
-				else:
-					db_user.currentxp = str(new_xp_total)
-				#update high score if it's higher
-				if new_streak > db_user.highscore:
-					db_user.highscore = new_streak
-				#write all new values to our cells
-				db_user.totalsubmissions = newscore
-				db_user.currency = newcurrency
-				db_user.streak = new_streak
-				db_user.submitted = 1
-				db_user.expiry = potentialstreak
-				#and push all cells to the database
-				session.commit()
-				#print("finishing updating " + db_user.name + "'s stats")
-				await message.channel.send( "```diff\n+ @{0} Submission Successful! Score updated!\n+ {1}xp gained.```".format(userToUpdate.name,xp_gained))
-				#finally, add an adore to the submission
-				await message.add_reaction( config.adoreEmoji)
-				#print("submit complete")
-				#check if we can make the a new artist a full artist
-				aRole = discord.utils.find(lambda r: r.name == 'Artists', userToUpdate.roles)
-				if(aRole == None):
-					na = discord.utils.find(lambda r: r.name == 'New Artist', userToUpdate.roles)
-					if(na):
-						await userToUpdate.remove_roles(na)
-						await userToUpdate.add_roles(discord.utils.find(lambda r: r.name == 'Artists', message.guild.roles))
-				
+			#update all the stats
+			newscore = db_user.totalsubmissions+1
+			newcurrency = db_user.currency+10
+			current_streak = db_user.streak
+			new_streak = current_streak+1
+			current_xp = db_user.currentxp
+			xp_gained = 10
+			if(current_streak > 0):
+				xp_gained = xp_gained + round(math.log2(current_streak)*2)
+			current_level = db_user.level
+			next_level_required_xp = current_level*10 + 50
+			new_xp_total = current_xp + xp_gained
+			#if we levelled up, increase level
+			while new_xp_total >= next_level_required_xp:
+				current_level = current_level + 1
+				new_xp_total = new_xp_total - next_level_required_xp
+				db_user.level = str(current_level)
+				db_user.currentxp = str(new_xp_total)
+				await message.channel.send("```Markdown\n# @{0} Level Up! You are now level {1}!\n```".format(userToUpdate.name,current_level))
+			#otherwise just increase exp
 			else:
-				await message.channel.send( "```diff\n- Not a png, jpg, or gif file```")
+				db_user.currentxp = str(new_xp_total)
+			#update high score if it's higher
+			if new_streak > db_user.highscore:
+				db_user.highscore = new_streak
+			#write all new values to our cells
+			db_user.totalsubmissions = newscore
+			db_user.currency = newcurrency
+			db_user.streak = new_streak
+			db_user.submitted = 1
+			db_user.expiry = potentialstreak
+			#and push all cells to the database
+			session.commit()
+			#print("finishing updating " + db_user.name + "'s stats")
+			await message.channel.send( "```diff\n+ @{0} Submission Successful! Score updated!\n+ {1}xp gained.```".format(userToUpdate.name,xp_gained))
+			#finally, add an adore to the submission
+			await message.add_reaction( config.adoreEmoji)
+			#print("submit complete")
+			#check if we can make the a new artist a full artist
+			aRole = discord.utils.find(lambda r: r.name == 'Artists', userToUpdate.roles)
+			if(aRole == None):
+				na = discord.utils.find(lambda r: r.name == 'New Artist', userToUpdate.roles)
+				if(na):
+					await userToUpdate.remove_roles(na)
+					await userToUpdate.add_roles(discord.utils.find(lambda r: r.name == 'Artists', message.guild.roles))
 
 
 async def createQuestTable(session):
