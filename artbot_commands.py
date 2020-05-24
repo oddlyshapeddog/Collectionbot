@@ -175,7 +175,7 @@ async def handleCommands(session, config, client, message):
 			#method to update a user based on id and quest
 			if(db_quester != None):
 				db_quester.progress = 1
-				await checkQuestCompletion(session,config,message.author.id,0)
+				await checkSingleUserQuests(session,config,message.author.id,0)
 
 		else:
 			await message.channel.send("```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
@@ -1019,7 +1019,7 @@ async def handleCommands(session, config, client, message):
 						db_questitem = getDBQuestItem(session,quest_id)
 						db_quester.progress = 1
 						db_user.currency = db_user.currency + db_questitem.award
-						await checkQuestCompletion(session, config,person.id,int(quest_id))
+						await checkSingleUserQuests(session, config,person.id,int(quest_id))
 						await config.botChannel.send("`Awarded {0} currency!`".format(db_questitem.award))
 					else:
 						await config.botChannel.send("<@{0}>, does not have quest {1}! please check if the user is signed up for quests and if the admin selected the right quest".format(person.id,quest_id))
@@ -1068,7 +1068,7 @@ async def handleSubmit(session, config, message, userToUpdate, url):
 			db_quester = getDBQuestMember(session,message.author.id,1)
 			if(db_quester != None):
 				db_quester.progress = 1
-				await checkQuestCompletion(session,config,message.author.id,1)
+				await checkSingleUserQuests(session,config,message.author.id,1)
 
 			#update all the stats
 			newscore = db_user.totalsubmissions+1

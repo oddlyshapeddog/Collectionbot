@@ -254,9 +254,8 @@ async def decayFunction():
 async def questCompleteFunction():
 	members = session.query(User).all()
 	print("Checking quests for all members")
-	for curr_member in members:
-		#Checks for quest completion here
-		await checkQuests(session,config,curr_member.id)
+	
+	await checkAllUsersQuests(session, config)
 	print("Finished checking quests")
 
 #do role update every 3 hours

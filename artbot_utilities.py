@@ -36,7 +36,11 @@ def getDBContest(session, number): #gets the database user based on the user's I
 def getDBQuestMember(session, number, quest): #gets the database user based on the user's ID and the quest number
 	db_questmember = None
 	try: #try to find user in database using id
-		if quest == "all":
+		if number == "all" and quest == "all":
+			db_questmember = session.query(QuestsMembers)
+		elif number == "all":
+			db_questmember = session.query(QuestsMembers).filter(QuestsMembers.questId == quest)
+		elif quest == "all":
 			db_questmember = session.query(QuestsMembers).filter(QuestsMembers.usrId == number)
 		else:
 			db_questmember = session.query(QuestsMembers).filter(QuestsMembers.usrId == number).filter(QuestsMembers.questId == quest).one()
@@ -44,10 +48,13 @@ def getDBQuestMember(session, number, quest): #gets the database user based on t
 		print('No user quest found, probably not registered')
 	return db_questmember #may be multiple if we request all
 
-def getDBQuestItem(session, number): #gets the database user based on the user's ID
+def getDBQuestItem(session, questID): #gets the database user based on the user's ID
 	db_questitem = None
 	try: #try to find user in database using id
-		db_questitem = session.query(QuestsList).filter(QuestsList.questId == number).one()
+		if questID == "all":
+			db_questitem = session.query(QuestsList)
+		else:
+			db_questitem = session.query(QuestsList).filter(QuestsList.questId == questID).one()
 	except sqlalchemy.orm.exc.NoResultFound:
 		print('No quest item found')
 	except sqlalchemy.orm.exc.MultipleResultsFound:
@@ -170,11 +177,34 @@ async def checkQuests(session,config,usrId):
 	for x in autoQuests:
 		await checkQuestCompletion(session,config, usrId,x.questId)
 
-
-async def checkQuestCompletion(session,config, usrId,questId):
-
+async def checkSingleUserQuests(session,config, usrId,questId):
 	db_quester = getDBQuestMember(session ,usrId,questId)
 	db_questitem = getDBQuestItem(session ,questId)
+	await checkQuestCompletion(session, config, usrId, questId, db_quester, db_questitem)
+	session.commit()
+
+async def checkAllUsersQuests(session,config):
+	#get everything we need in one single database transaction
+	#get all user quest items
+	all_questers = getDBQuestMember(session ,'all','all')
+	#get all quests
+	all_quests = getDBQuestItem(session, 'all')
+	#go through every quest
+	for q in all_questers:
+		#get the specific quest from our pre-prepared list
+		#this_quest = all_quests.filter(QuestsList.questId == q.questId).one()
+		for qi in all_quests:
+			if qi.questId == q.questId:
+				#print('user ' + q.name + ' quest ' + str(qi.questId))
+				await checkQuestCompletion(session, config, q.usrId, q.questId, q, qi)
+				break
+	session.commit() #remember committing a session takes time, so do it only once if possible
+
+
+async def checkQuestCompletion(session,config, usrId,questId, db_quester, db_questitem):
+
+	#db_quester = getDBQuestMember(session ,usrId,questId)
+	#db_questitem = getDBQuestItem(session ,questId)
 
 	if(db_quester != None):
 
@@ -192,8 +222,6 @@ async def checkQuestCompletion(session,config, usrId,questId):
 	else:
 
 		print('quest for user not found')
-
-	session.commit()
 	
 
 async def updateRoles(session, config,serv):
