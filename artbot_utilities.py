@@ -306,6 +306,7 @@ class Config():
 	adoreEmoji = 0
 	adoreEmojiID = 0
 	discordKey = ''
+	adminChannel = 0
 	
 	def LoadFromFile(self, filename):
 		data={}
@@ -326,6 +327,7 @@ class Config():
 		self.submitChannels = data[key]['submitChannels']
 		self.adoreEmojiID = data[key]['adoreEmojiID']
 		self.discordKey = data[key]['discordKey']
+		self.adminChannel = data[key]['adminChannel']
 		
 	def WriteToFile(self, filename):
 		data = {}

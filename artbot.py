@@ -67,6 +67,8 @@ async def on_ready():
 	print("admin role set to " + config.adminRole.name)
 	config.adoreEmoji = discord.utils.find(lambda e: e.id == config.adoreEmojiID, config.tapeGuild.emojis)
 	print("adore emoji set to " + config.adoreEmoji.name)
+	config.adminChannel = discord.utils.find(lambda c: c.id == config.adminChannel, config.tapeGuild.channels)
+	print("admin channel set to " + config.adminChannel.name)
 
 @client.event
 async def on_reaction_add(reaction, user):
@@ -257,13 +259,19 @@ async def questCompleteFunction():
 	
 	await checkAllUsersQuests(session, config)
 	print("Finished checking quests")
+	
+async def raffle_notification():
+	#warn admins that the raffle has ended.
+	mentionString = config.adminRole.mention
+	await config.adminChannel.send( "{}\n```It's the start of the new month, don't forget the raffle!```".format(mentionString))
 
 #do role update every 3 hours
 scheduler.add_job(roletask, 'cron', hour='2,5,8,11,14,17,20,22')
 #run housekeeping at 7am UTC
-scheduler.add_job(housekeeper_start, 'cron', hour=7, minute=0) #hour=7
+scheduler.add_job(housekeeper_start, 'cron', hour=7, minute=0) #hour=7:00
 #warn users about their decay
-scheduler.add_job(decayFunction, 'cron', hour=7, minute=2) #hour=7
-scheduler.add_job(questCompleteFunction, 'cron', hour=7, minute=4) #hour=7
+scheduler.add_job(decayFunction, 'cron', hour=7, minute=2) #hour=7:02
+scheduler.add_job(questCompleteFunction, 'cron', hour=7, minute=4) #hour=7:04
+scheduler.add_job(raffle_notification, 'cron', day=1, hour=7, minute=15) #hour=7:15
 scheduler.start()
 client.run(config.discordKey) #Runs live or not live depending on flag set at top of file
