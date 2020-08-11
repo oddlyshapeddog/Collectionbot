@@ -1,0 +1,90 @@
+@font-face {
+    font-family: 'Balsamiq Sans';
+    font-weight: 400;
+    src: local('Balsamiq Sans Regular'), local('BalsamiqSans-Regular'), url('../fonts/Balsamiq_Sans/BalsamiqSans-Regular.ttf') format('woff2');
+}
+
+@font-face {
+    font-family: 'Balsamiq Sans';
+    font-weight: bold;
+    src: local('Balsamiq Sans Bold'), local('BalsamiqSans-Bold'), url('../fonts/Balsamiq_Sans/BalsamiqSans-Bold.ttf') format('woff2');
+}
+
+@font-face {
+    font-family: 'Chelsea Market';
+    src: local('Balsamiq Sans Bold'), local('BalsamiqSans-Bold'), url('../fonts/Chelsea_Market/ChelseaMarket-Regular.ttf') format('woff2');
+}
+
+@-webkit-keyframes rotating
+/* Safari and Chrome */
+
+{
+    from {
+        -webkit-transform: rotate(0deg);
+        -o-transform: rotate(0deg);
+        transform: rotate(0deg);
+    }
+    to {
+        -webkit-transform: rotate(360deg);
+        -o-transform: rotate(360deg);
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes rotating {
+    from {
+        -ms-transform: rotate(0deg);
+        -moz-transform: rotate(0deg);
+        -webkit-transform: rotate(0deg);
+        -o-transform: rotate(0deg);
+        transform: rotate(0deg);
+    }
+    to {
+        -ms-transform: rotate(360deg);
+        -moz-transform: rotate(360deg);
+        -webkit-transform: rotate(360deg);
+        -o-transform: rotate(360deg);
+        transform: rotate(360deg);
+    }
+}
+
+:root {
+    --heading-font: 'Balsamiq Sans';
+    --heading-font: 'Chelsea Market';
+}
+
+.navbar-brand a,
+.hero .title {
+    font-family: var(--heading-font);
+    text-transform: lowercase;
+}
+
+.navbar-brand a {
+    font-size: 1.5rem;
+    color: #888;
+}
+
+.navbar-brand a .beta {
+    display: inline-block;
+    font-family: var(--heading-font);
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    color: #888;
+    padding: 0.5rem 0 0 0.25rem;
+}
+
+.hero .title {
+    font-weight: 400;
+}
+
+#app>.fa-spinner {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    animation-name: rotating;
+    animation-duration: 1s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+}

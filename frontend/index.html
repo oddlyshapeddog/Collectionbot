@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bot Name</title>
+    <link href="lib/bulma/bulma.min.css" rel="stylesheet" />
+    <link href="lib/fontawesome-free-5.14.0-web/css/fontawesome.min.css" rel="stylesheet" />
+    <link href="lib/fontawesome-free-5.14.0-web/css/solid.min.css" rel="stylesheet" />
+    <link href="lib/fontawesome-free-5.14.0-web/css/brands.min.css" rel="stylesheet" />
+    <link href="css/main.css" rel="stylesheet" />
+</head>
+
+<body>
+    <div id="app">
+        <i class="fas fa-spinner fa-4x"></i>
+    </div>
+    <script src="lib/htm.min.js"></script>
+    <script src="lib/preact.min.js"></script>
+    <script src="js/components/Breadcrumbs.js"></script>
+    <script src="js/components/ComponentCard.js"></script>
+    <script src="js/components/HomepageHero.js"></script>
+    <script src="js/components/LoginButton.js"></script>
+    <script src="js/components/Nav.js"></script>
+    <script src="js/components/PageLayout.js"></script>
+    <script src="js/net/auth.js"></script>
+    <script src="js/net/utils.js"></script>
+    <script src="js/routing/routing.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/main.js"></script>
+    <script>
+        init().then(() => {
+            const {
+                h,
+                render
+            } = preact;
+            const html = htm.bind(h);
+
+            function App(props) {
+                return html `
+                <${PageLayout}>
+                    <${HomepageHero}/>
+                <//>
+            `;
+            }
+
+            render(
+                html `
+                <${App}/>
+            `,
+                document.querySelector("#app")
+            );
+        })
+    </script>
+</body>
+
+</html>
