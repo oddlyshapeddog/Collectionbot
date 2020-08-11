@@ -326,6 +326,7 @@ class Config():
 		self.botChannelName = data[key]['botChannelName']
 		self.submitChannels = data[key]['submitChannels']
 		self.adoreEmojiID = data[key]['adoreEmojiID']
+		self.discordClientId = data[key]['discordClientId']
 		self.discordKey = data[key]['discordKey']
 		self.adminChannel = data[key]['adminChannel']
 		
@@ -347,6 +348,7 @@ class Config():
 			'botChannelName' : self.botChannelName,
 			'submitChannels' : self.submitChannels,
 			'adoreEmojiID' : self.adoreEmojiID,
+			'discordClientId' : self.discordClientId,
 			'discordKey' : ' '
 		}
 		#data specific to test
@@ -356,8 +358,10 @@ class Config():
 			'botChannelName' : self.botChannelName,
 			'submitChannels' : self.submitChannels,
 			'adoreEmojiID' : self.adoreEmojiID,
+			'discordClientId' : self.discordClientId,
 			'discordKey' : ' '
 		}
 		with open(filename, 'w') as outfile:  
 			json.dump(data, outfile, indent=4)
+
 			

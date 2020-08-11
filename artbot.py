@@ -39,7 +39,7 @@ DBSession = sessionmaker(bind=engine)
 session = DBSession() #session.commit() to store data, and session.rollback() to discard changes
 
 config = Config()
-config.live = True #Use this flag to change between live and test config
+config.live = False #Use this flag to change between live and test config
 
 config.LoadFromFile('config.txt')
 
@@ -57,17 +57,30 @@ async def on_ready():
 	print(client.user.name)
 	print(client.user.id)
 	print('------')
+
+	adminChannel = config.adminChannel
+
 	#Store the server and the bot command channel
 	config.tapeGuild = discord.utils.find(lambda s: s.name == config.guildName, client.guilds)
+	if (not config.tapeGuild):
+		raise Exception('Discord server not found: {0}'.format(config.guildName))
 	print("active server set to " + config.tapeGuild.name)
 	config.botChannel = discord.utils.find(lambda c: c.name == config.botChannelName, config.tapeGuild.channels)
+	if (not config.botChannel):
+		raise Exception('Channel not found: {0}'.format(config.botChannelName))
 	print("bot channel set to " + config.botChannel.name)
 	#admin role, admin actions require at least this role (or any with higher priority)
 	config.adminRole = discord.utils.find(lambda r: r.name == config.adminRoleName, config.tapeGuild.roles)
+	if (not config.adminRole):
+		raise Exception('Role not found: {0}'.format(config.adminRoleName))
 	print("admin role set to " + config.adminRole.name)
 	config.adoreEmoji = discord.utils.find(lambda e: e.id == config.adoreEmojiID, config.tapeGuild.emojis)
+	if (not config.adoreEmoji):
+		print('Emoji not found: {0}; I\'m just going to pretend everything is fine'.format(config.adoreEmojiID))
 	print("adore emoji set to " + config.adoreEmoji.name)
 	config.adminChannel = discord.utils.find(lambda c: c.id == config.adminChannel, config.tapeGuild.channels)
+	if (not config.adminChannel):
+		raise Exception('Channel not found: {0}'.format(adminChannel))
 	print("admin channel set to " + config.adminChannel.name)
 
 @client.event
@@ -264,6 +277,9 @@ async def raffle_notification():
 	#warn admins that the raffle has ended.
 	mentionString = config.adminRole.mention
 	await config.adminChannel.send( "{}\n```It's the start of the new month, don't forget the raffle!```".format(mentionString))
+
+if (not config.discordKey):
+	raise Exception('Your config is missing a discord key; get one here: https://discord.com/developers/applications/')
 
 #do role update every 3 hours
 scheduler.add_job(roletask, 'cron', hour='2,5,8,11,14,17,20,22')
