@@ -1,0 +1,18 @@
+language: python
+
+services:
+  - docker
+
+before_install:
+  - docker build -t oddlyshapeddog/collectionbot .
+  - docker run -d -p 127.0.0.1:80:4567 oddlyshapeddog/collectionbot /bin/sh -c "cd /root/collectionbot; bundle exec foreman start;"
+  - docker ps -a
+  - docker run; exit 0"
+
+script:
+  - exit 0
+
+after_success:
+  - ./travis/send-discord-notification.sh success $WEBHOOK_URL
+after_failure:
+  - ./travis/send-discord-notification.sh failure $WEBHOOK_URL
