@@ -1,5 +1,9 @@
 language: python
 
+os: linux
+dist: xenial
+arch: arm64
+
 services:
   - docker
 
