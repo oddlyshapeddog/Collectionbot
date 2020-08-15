@@ -17,6 +17,8 @@ script:
   - docker run -d oddlyshapeddog/collectionbot; exit 0
 
 after_success:
+  - echo "Success"
   - ./travis/send-discord-notification.sh success $DISCORD_WEBHOOK_URL
 after_failure:
+  - echo "Failure"
   - ./travis/send-discord-notification.sh failure $DISCORD_WEBHOOK_URL
