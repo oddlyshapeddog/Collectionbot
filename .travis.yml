@@ -1,0 +1,24 @@
+language: python
+
+os: linux
+dist: xenial
+arch: arm64
+
+services:
+  - docker
+
+# before_install:
+#   - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+#   - sudo apt-get -q update
+#   - sudo apt-get -y install gcc-4.8
+
+script:
+  - docker build -t oddlyshapeddog/collectionbot .
+  - docker run oddlyshapeddog/collectionbot
+
+after_success:
+  - echo "Success"
+  - ./travis/send-discord-notification.sh success $DISCORD_WEBHOOK_URL
+after_failure:
+  - echo "Failure"
+  - ./travis/send-discord-notification.sh failure $DISCORD_WEBHOOK_URL
