@@ -1,7 +1,7 @@
 FROM python:3.7-alpine
 
 RUN apk update && \
-  apk add gcc linux-headers
+  apk add gcc linux-headers musl-dev
 
 COPY . /app
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
