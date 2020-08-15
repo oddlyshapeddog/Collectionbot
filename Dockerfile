@@ -10,4 +10,4 @@ RUN mkdir -p /var/log/supervisord
 RUN pip install -r requirements.txt
 
 # CMD ["/usr/bin/supervisord"]
-CMD ["echo a"]
+CMD ["echo", "Success"]
