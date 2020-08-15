@@ -14,7 +14,7 @@ services:
 
 script:
   - docker build -t oddlyshapeddog/collectionbot .
-  - docker run -d oddlyshapeddog/collectionbot; exit 0
+  - docker run oddlyshapeddog/collectionbot
 
 after_success:
   - echo "Success"
