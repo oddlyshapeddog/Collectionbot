@@ -61,6 +61,6 @@ The test suite requires the following env variables:
 | Name                         | Description                               |
 | ---------------------------- | ----------------------------------------- |
 | `DISCORD_WEKHOOK_URL_CANARY` | Runs the canary                           |
-| `DISCORD_WEBHOOK_URL_TRAVIS` | Posts build success/failure notifications |
+| `DISCORD_WEBHOOK_URL_BUILDS` | Posts build success/failure notifications |
 
 **Note:** I mistyped `WEBHOOK` as `WEKHOOK` but I'm too lazy to fix it
