@@ -306,7 +306,6 @@ class Config():
 	botChannelName = 'no-channel'
 	submitChannels = []
 	adoreEmoji = 0
-	adoreEmojiID = 0
 	discordKey = ''
 	adminChannel = 0
 	
@@ -329,8 +328,8 @@ class Config():
 		self.guildName = data[key]['guildName']
 		self.botChannelName = data[key]['botChannelName']
 		self.submitChannels = data[key]['submitChannels']
-		self.adoreEmojiID = data[key]['adoreEmojiID']
 		self.discordClientId = data[key]['discordClientId']
+		self.adoreEmoji = data[key]['adoreEmoji']
 		self.discordKey = data[key]['discordKey']
 		self.adminChannel = data[key]['adminChannel']
 		
@@ -351,7 +350,7 @@ class Config():
 			'guildName' : self.guildName,
 			'botChannelName' : self.botChannelName,
 			'submitChannels' : self.submitChannels,
-			'adoreEmojiID' : self.adoreEmojiID,
+			'adoreEmoji' : self.adoreEmoji,
 			'discordClientId' : self.discordClientId,
 			'discordKey' : ' '
 		}
@@ -361,7 +360,7 @@ class Config():
 			'guildName' : self.guildName,
 			'botChannelName' : self.botChannelName,
 			'submitChannels' : self.submitChannels,
-			'adoreEmojiID' : self.adoreEmojiID,
+			'adoreEmoji' : self.adoreEmoji,
 			'discordClientId' : self.discordClientId,
 			'discordKey' : ' '
 		}
