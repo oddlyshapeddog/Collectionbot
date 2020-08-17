@@ -67,7 +67,8 @@ async def on_ready():
 	if (not config.tapeGuild):
 		raise Exception('Discord server not found: {0}'.format(config.guildName))
 	print("active server set to " + config.tapeGuild.name)
-	config.botChannel = discord.utils.find(lambda c: c.id == config.botChannelID || c.name == config.botChannelName, config.tapeGuild.channels)
+
+	config.botChannel = discord.utils.find(lambda c: c.id == config.botChannelID or c.name == config.botChannelName, config.tapeGuild.channels)
 	if (not config.botChannel):
 		raise Exception('Channel not found: {0}'.format(config.botChannelName))
 	print("bot channel set to " + config.botChannel.name)
@@ -76,11 +77,11 @@ async def on_ready():
 	if (not config.adminRole):
 		raise Exception('Role not found: {0}'.format(config.adminRoleName))
 	print("admin role set to " + config.adminRole.name)
-	config.adoreEmoji = discord.utils.find(lambda e: e.id == config.adoreEmojiID || e.name == config.adoreEmoji, config.tapeGuild.emojis)
+	config.adoreEmoji = discord.utils.find(lambda e: e.id == config.adoreEmojiID or e.name == config.adoreEmoji, config.tapeGuild.emojis)
 	if (not config.adoreEmoji):
-		print('Emoji not found: {0}; I\'m just going to pretend everything is fine'.format(config.adoreEmojiID || config.adoreEmoji))
+		print('Emoji not found: {0}; I\'m just going to pretend everything is fine'.format(config.adoreEmojiID or config.adoreEmoji))
 	print("adore emoji set to " + config.adoreEmoji.name)
-	config.adminChannel = discord.utils.find(lambda c: c.id == config.adminChannel || c.name == config.adminChannel, config.tapeGuild.channels)
+	config.adminChannel = discord.utils.find(lambda c: c.id == config.adminChannel or c.name == config.adminChannel, config.tapeGuild.channels)
 	if (not config.adminChannel):
 		raise Exception('Channel not found: {0}'.format(adminChannel))
 	print("admin channel set to " + config.adminChannel.name)
