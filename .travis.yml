@@ -14,7 +14,7 @@ services:
 
 script:
   - docker build -t oddlyshapeddog/collectionbot .
-  - docker run -d oddlyshapeddog/collectionbot --name cb
+  - docker run -d --name cb oddlyshapeddog/collectionbot
   - ./tests/test.sh $DISCORD_WEKHOOK_URL_CANARY
   - docker stop cb
 
