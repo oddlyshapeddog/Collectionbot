@@ -133,7 +133,7 @@
         "botChannelName": "bot",
         "submitChannels": [
             "general",
-            "bot",
+            "bot"
         ],
         "adminChannel": "bot-admin",
         "adoreEmoji": "stove",
@@ -145,7 +145,7 @@
         "guildName": "Oddly Shaped Dog",
         "botChannelName": "bot-beta",
         "submitChannels": [
-            "bot-beta",
+            "bot-beta"
         ],
         "adminChannel": "bot-admin-beta",
         "adoreEmoji": "stove",

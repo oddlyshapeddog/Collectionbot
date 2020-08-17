@@ -43,7 +43,7 @@ config = Config()
 config.live = False # Use this flag to change between live and test config
 if environ.get('LIVE') is not None:
 	config.live = True
-config.LoadFromFile('config.txt')
+config.LoadFromFile('config.json')
 
 ### Art bot by Whatsapokemon and MarshBreeze 2.0
 ### Simple bot for Discord designed to manage image collection.

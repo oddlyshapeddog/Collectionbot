@@ -12,7 +12,7 @@ async def handleCommands(session, config, client, message):
 	if message.content.lower() == "f" and message.channel.id == "279098440820981760":
 		await message.channel.send( "```Markdown\n {0} has paid their respects.\n```".format(message.author))
 	elif message.content.lower().startswith('!submit'):
-		if (message.channel.id in config.submitChannels || message.channel.name in config.submitChannels):
+		if (message.channel.id in config.submitChannels or message.channel.name in config.submitChannels):
 			#print(message.embeds[0].description)
 			#print(message.embeds[0].thumbnail.url)
 			#print(message.embeds[0].thumbnail.proxy_url)
