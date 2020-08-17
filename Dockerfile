@@ -4,9 +4,9 @@ RUN apk update && \
   apk add gcc linux-headers musl-dev
 
 COPY . /app
-COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+# COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 WORKDIR /app
 RUN mkdir -p /var/log/supervisord
 RUN pip install -r requirements.txt
 
-CMD ["/usr/local/bin/supervisord"]
+CMD ["/usr/local/bin/supervisord", "-c", "/app/supervisord.conf"]
