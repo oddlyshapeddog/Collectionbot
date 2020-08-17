@@ -14,11 +14,13 @@ services:
 
 script:
   - docker build -t oddlyshapeddog/collectionbot .
-  - docker run oddlyshapeddog/collectionbot
+  - docker run -d --name cb oddlyshapeddog/collectionbot
+  - ./tests/test.sh $DISCORD_WEKHOOK_URL_CANARY
+  - docker stop cb
 
 after_success:
   - echo "Success"
-  - ./travis/send-discord-notification.sh success $DISCORD_WEBHOOK_URL
+  - ./travis/send-discord-notification.sh success $DISCORD_WEBHOOK_URL_BUILDS
 after_failure:
   - echo "Failure"
-  - ./travis/send-discord-notification.sh failure $DISCORD_WEBHOOK_URL
+  - ./travis/send-discord-notification.sh failure $DISCORD_WEBHOOK_URL_BUILDS

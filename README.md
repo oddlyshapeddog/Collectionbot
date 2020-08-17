@@ -12,7 +12,7 @@ Keep the following things handy, you'll need them:
 
 Then do this:
 
-- Copy config.sample.txt to config.txt
+- Copy secrets.sample.txt to secrets.txt
 - Change YOUR_DISCORD_APP_ID to your app ID
 - Change NAME_OF_YOUR_DISCORD_SERVER to the name of your Discord server
 - Change CHANNEL_ID to your submit channel. You cna have multiple submit channels, separated by commas.
@@ -51,3 +51,16 @@ To start the bot, run this:
 ```
 python3 artbot.py
 ```
+
+## CI
+
+### Webhooks setup
+
+The test suite requires the following env variables:
+
+| Name                         | Description                               |
+| ---------------------------- | ----------------------------------------- |
+| `DISCORD_WEKHOOK_URL_CANARY` | Runs the canary                           |
+| `DISCORD_WEBHOOK_URL_BUILDS` | Posts build success/failure notifications |
+
+**Note:** I mistyped `WEBHOOK` as `WEKHOOK` but I'm too lazy to fix it

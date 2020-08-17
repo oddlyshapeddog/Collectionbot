@@ -7,6 +7,7 @@ import math
 import random
 import sys, traceback
 import pytz
+from os import environ
 from artbot_utilities import *
 from artbot_commands import *
 from artbot_tests import *
@@ -39,9 +40,10 @@ DBSession = sessionmaker(bind=engine)
 session = DBSession() #session.commit() to store data, and session.rollback() to discard changes
 
 config = Config()
-config.live = False #Use this flag to change between live and test config
-
-config.LoadFromFile('config.txt')
+config.live = False # Use this flag to change between live and test config
+if environ.get('LIVE') is not None:
+	config.live = True
+config.LoadFromFile('config.json')
 
 ### Art bot by Whatsapokemon and MarshBreeze 2.0
 ### Simple bot for Discord designed to manage image collection.
@@ -65,7 +67,8 @@ async def on_ready():
 	if (not config.tapeGuild):
 		raise Exception('Discord server not found: {0}'.format(config.guildName))
 	print("active server set to " + config.tapeGuild.name)
-	config.botChannel = discord.utils.find(lambda c: c.name == config.botChannelName, config.tapeGuild.channels)
+
+	config.botChannel = discord.utils.find(lambda c: c.id == config.botChannelName or c.name == config.botChannelName, config.tapeGuild.channels)
 	if (not config.botChannel):
 		raise Exception('Channel not found: {0}'.format(config.botChannelName))
 	print("bot channel set to " + config.botChannel.name)
@@ -74,14 +77,15 @@ async def on_ready():
 	if (not config.adminRole):
 		raise Exception('Role not found: {0}'.format(config.adminRoleName))
 	print("admin role set to " + config.adminRole.name)
-	config.adoreEmoji = discord.utils.find(lambda e: e.id == config.adoreEmojiID, config.tapeGuild.emojis)
+	config.adoreEmoji = discord.utils.find(lambda e: e.id == config.adoreEmoji or e.name == config.adoreEmoji, config.tapeGuild.emojis)
 	if (not config.adoreEmoji):
-		print('Emoji not found: {0}; I\'m just going to pretend everything is fine'.format(config.adoreEmojiID))
+		raise Exception('Emoji not found: {0}'.format(config.adoreEmoji))
 	print("adore emoji set to " + config.adoreEmoji.name)
-	config.adminChannel = discord.utils.find(lambda c: c.id == config.adminChannel, config.tapeGuild.channels)
+	config.adminChannel = discord.utils.find(lambda c: c.id == config.adminChannel or c.name == config.adminChannel, config.tapeGuild.channels)
 	if (not config.adminChannel):
 		raise Exception('Channel not found: {0}'.format(adminChannel))
 	print("admin channel set to " + config.adminChannel.name)
+	await config.botChannel.send(config.on_join_message)
 
 @client.event
 async def on_reaction_add(reaction, user):
@@ -278,8 +282,12 @@ async def raffle_notification():
 	mentionString = config.adminRole.mention
 	await config.adminChannel.send( "{}\n```It's the start of the new month, don't forget the raffle!```".format(mentionString))
 
-if (not config.discordKey):
-	raise Exception('Your config is missing a discord key; get one here: https://discord.com/developers/applications/')
+if environ.get('DISCORD_KEY') is not None:
+	discordKey = environ.get('DISCORD_KEY')
+else:
+	discordKey = config.discordKey 
+if (not discordKey):
+	raise Exception('Your config.txt file is missing a discord key; get one here: https://discord.com/developers/applications/')
 
 #do role update every 3 hours
 scheduler.add_job(roletask, 'cron', hour='2,5,8,11,14,17,20,22')
@@ -290,4 +298,4 @@ scheduler.add_job(decayFunction, 'cron', hour=7, minute=2) #hour=7:02
 scheduler.add_job(questCompleteFunction, 'cron', hour=7, minute=4) #hour=7:04
 scheduler.add_job(raffle_notification, 'cron', day=1, hour=7, minute=15) #hour=7:15
 scheduler.start()
-client.run(config.discordKey) #Runs live or not live depending on flag set at top of file
+client.run(discordKey) #Runs live or not live depending on flag set at top of file
