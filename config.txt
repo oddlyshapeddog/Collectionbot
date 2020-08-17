@@ -126,26 +126,27 @@
         ]
     },
     "live_config": {
-        "adminRoleName": "ADMINS_ROLE",
-        "guildName": "NAME_OF_YOUR_DISCORD_SERVER",
-        "botChannelName": "bot-channel",
+        "adminRoleName": "Bot Admins",
+        "guildName": "Oddly Shaped Dog",
+        "botChannelName": "bot",
         "submitChannels": [
-            CHANNEL_ID,
+            "general",
+            "bot",
         ],
-		    "adminChannel": ADMIN_CHANNEL_ID,
-        "adoreEmojiID": ADORE_EMOJI,
-        "discordClientId": "",
-        "discordKey": ""
+        "adminChannel": "bot-admin",
+        "adoreEmoji": "stove",
+        "discordClientId": "YOUR_DISCORD_CLIENT_ID",
+        "discordKey": "YOUR_DISCORD_KEY"
     },
     "test_config": {
-        "adminRoleName": "ADMINS_ROLE",
-        "guildName": "NAME OF YOUR DISCORD SERVER",
-        "botChannelName": "bot-channel",
+        "adminRoleName": "Bot Admins",
+        "guildName": "Oddly Shaped Dog",
+        "botChannelName": "bot-beta",
         "submitChannels": [
-            CHANNEL_ID,
+            "bot-beta",
         ],
-		    "adminChannel": ADMIN_CHANNEL_ID,
-        "adoreEmojiID": ADORE_EMOJI,
+        "adminChannel": "bot-admin-beta",
+        "adoreEmoji": "stove",
         "discordClientId": "YOUR_DISCORD_CLIENT_ID",
         "discordKey": "YOUR_DISCORD_KEY"
     }

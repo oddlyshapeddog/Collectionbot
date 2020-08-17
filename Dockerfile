@@ -9,5 +9,4 @@ WORKDIR /app
 RUN mkdir -p /var/log/supervisord
 RUN pip install -r requirements.txt
 
-# CMD ["/usr/bin/supervisord"]
-CMD ["echo", "Success"]
+CMD ["/usr/local/bin/supervisord"]
