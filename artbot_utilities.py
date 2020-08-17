@@ -290,6 +290,8 @@ async def updateRoles(session, config,serv):
 #Keep this at bottom
 class Config():
 	live = False
+	on_join_message = ''
+	on_leave_message = ''
 	spreadsheet_schema = {}
 	months = {}
 	nonach_roles = []
@@ -313,6 +315,8 @@ class Config():
 		with open(filename) as json_file:  
 			data = json.load(json_file)
 		#read generic data
+		self.on_join_message = data['all_config']['on_join_message']
+		self.on_leave_message = data['all_config']['on_leave_message']
 		self.spreadsheet_schema = data['all_config']['spreadsheet_schema']
 		self.months = data['all_config']['months']
 		self.nonach_roles = data['all_config']['nonach_roles']

@@ -84,6 +84,7 @@ async def on_ready():
 	if (not config.adminChannel):
 		raise Exception('Channel not found: {0}'.format(adminChannel))
 	print("admin channel set to " + config.adminChannel.name)
+	await config.botChannel.send(config.on_join_message)
 
 @client.event
 async def on_reaction_add(reaction, user):
