@@ -225,17 +225,17 @@ async def checkQuestCompletion(session,config, usrId,questId, db_quester, db_que
 
 async def createRoles(config, serv):
 	for roleName in config.override_roles:
-		await createRoleIfNotExists(serv, roleName)
+		await createRoleIfNotExists(config, serv, roleName)
 	for roleName in config.streak_roles:
-		await createRoleIfNotExists(serv, roleName)
-	await createRoleIfNotExists(serv, "Idea Machine")
-	await createRoleIfNotExists(serv, "Artists")
-	await createRoleIfNotExists(serv, "New Artist")
-	await createRoleIfNotExists(serv, "NSFW Artist")
+		await createRoleIfNotExists(config, serv, roleName)
+	await createRoleIfNotExists(config, serv, "Idea Machine")
+	await createRoleIfNotExists(config, serv, "Artists")
+	await createRoleIfNotExists(config, serv, "New Artist")
+	await createRoleIfNotExists(config, serv, "NSFW Artist")
 
 async def updateRoles(session, config, serv):
 	#ensure all required roles exist
-	createRoles(config, serv)
+	await createRoles(config, serv)
 	#get all rows and put into memory
 	for dbUser in session.query(User).all():
 		streak = dbUser.streak
@@ -296,9 +296,10 @@ async def updateRoles(session, config, serv):
 				print("updating roles for {0} with streak {1}".format(member, streak))
 	print('Updating Roles Completed')
 
-async def createRoleIfNotExists(serv, roleName):
+async def createRoleIfNotExists(config, serv, roleName):
 	role = discord.utils.get(serv.roles, name=roleName)
 	if(role == None):
+		await config.botChannel.send("Creating role {0}".format(roleName))
 		await serv.create_role(name=roleName)
 	print('Created role {0}'.format(roleName))
 
