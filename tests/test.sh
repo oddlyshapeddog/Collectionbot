@@ -9,7 +9,7 @@ echo -e "[Webhook]: Sending webhook to Discord...\\n";
 WEBHOOK_DATA='{
   "username": "",
   "avatar_url": "",
-  "content": "!runhouse"
+  "content": "!8ball"
 }'
 
 (curl --fail --progress-bar -A "TravisCI-Webhook" -H Content-Type:application/json -H X-Author:NotDaisuke -d "${WEBHOOK_DATA//	/ }" "$1" \

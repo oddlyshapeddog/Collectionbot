@@ -132,10 +132,9 @@
     "live_config": {
         "adminRoleName": "Bot Admins",
         "guildName": "Oddly Shaped Dog",
-        "botChannelName": "bot-log",
+        "botChannelName": "bot",
         "submitChannels": [
-            "general",
-            "bot"
+            "bot-submissions"
         ],
         "adminChannel": "bot-admin",
         "adoreEmoji": "stove",
@@ -145,9 +144,9 @@
     "test_config": {
         "adminRoleName": "Bot Admins",
         "guildName": "Oddly Shaped Dog",
-        "botChannelName": "bot-log-beta",
+        "botChannelName": "bot-beta",
         "submitChannels": [
-            "bot-beta"
+            "bot-submissions-beta"
         ],
         "adminChannel": "bot-admin-beta",
         "adoreEmoji": "stove",
