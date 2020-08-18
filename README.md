@@ -5,15 +5,14 @@
 Keep the following things handy, you'll need them:
 
 - Go to your custom [Discord app](https://discord.com/developers/applications/741867546524909601) and copy the client ID and client secret. **Never share the client secret or publish it through code! It's a secret!**
-- Go to your Discord server, select the channel you want the bot to live in, and copy the number at the end of the URL. Example: if the URL is `https://discord.com/channels/700000000000000007/111111111111111112`, then copy the number `111111111111111112`. This is your "submit channel". You can have multiple submit channels.
-- Still in your Discord server, select the channel you want to use to manage the bot, and copy the channel number. This is your admin channel. There can be only one.
+- Go to your Discord server, copy the names of the channels you want the bot to live in. These are "submit channels". You can have as many as you want.
+- Still in your Discord server, copy the name of the channel you want to use to manage the bot. This is your admin channel. There can be only one.
 - Still in your Discord server, create a role named "Artbot admins" (or whatever you want). Copy the name of this role.
 - Still in your Discord server, go to your Discord emojis and figure out which one you want to use as an "adore" emote. Copy the name.
 
 Then do this:
 
-- Copy secrets.sample.txt to secrets.txt
-- Change YOUR_DISCORD_APP_ID to your app ID
+- Open config.json
 - Change NAME_OF_YOUR_DISCORD_SERVER to the name of your Discord server
 - Change CHANNEL_ID to your submit channel. You cna have multiple submit channels, separated by commas.
 - Change ADMIN_CHANNEL_ID to your admin channel.

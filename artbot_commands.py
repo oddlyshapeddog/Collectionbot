@@ -181,12 +181,12 @@ async def handleCommands(session, config, client, message):
 			await message.channel.send("```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
 	elif message.content.lower().startswith('!ach'):
 		serv = message.guild
-		ach_card = "```Python\n @{0} - Achievements\n# Note: unlocked ones are in green and denoted with a '+'.\n```\n```diff\n".format(message.author.name)
+		ach_card = "```Python\n @{0} - Achievements\n# Note: unlocked ones are in green and denoted with a 🏆.\n```\n```diff\n".format(message.author.name)
 		for rank in serv.roles:
 			if rank in message.author.roles and rank.name not in config.nonach_roles:
-				ach_card = ach_card + '+ {0}\n'.format(rank.name)
+				ach_card = ach_card + '🏆 {0}\n'.format(rank.name)
 			if rank not in message.author.roles and rank.name not in config.nonach_roles:
-				ach_card = ach_card + '# {0}\n'.format(rank.name)
+				ach_card = ach_card + '　 {0}\n'.format(rank.name)
 		ach_card = ach_card + "```"
 		await message.channel.send( ach_card)
 	elif message.content.lower().startswith('!timeleft'):
