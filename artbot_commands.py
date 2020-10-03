@@ -83,11 +83,11 @@ async def handleCommands(session, config, client, message):
 # To see your achievement status, type !ach
 # Override your role colour using !override [Role Number], or !override none to clear an active override.
 # To turn on or off the PM warning system about your streak use the command !streakwarning on or !streakwarning off.
-```
-```diff
-- For those of our older artists, you may access the nsfw channels by typing !nsfwjoin and you can hide those channels by typing !nsfwleave. 
-- When submitting nsfwcontent please use the r18 channels respectively!!
 ```"""
+	# 	helpString = helpString . """```diff
+	# - For those of our older artists, you may access the nsfw channels by typing !nsfwjoin and you can hide those channels by typing !nsfwleave. 
+	# - When submitting nsfwcontent please use the r18 channels respectively!!
+	# ```"""
 		await message.channel.send( helpString)
 	elif message.content.lower().startswith('!stats') and message.channel == config.botChannel:
 		#try to find user in database using id
@@ -207,18 +207,18 @@ async def handleCommands(session, config, client, message):
 		await message.channel.send( "```Markdown\n# Updating Roles...\n```")
 		await updateRoles(session, config,message.guild)
 		await message.channel.send( "```diff\n+ Updating roles was a happy little success!\n```")
-	elif message.content.lower().startswith('!nsfwjoin'):
-		serv = message.author.guild
-		for rank in serv.roles:
-			if rank.name == "NSFW Artist":
-				await message.author.add_roles(rank)
-				await message.channel.send( "```Markdown\nYou should now have access to the NSFW channels, Oh my!```")
-	elif message.content.lower().startswith('!nsfwleave'):
-		serv = message.author.guild
-		for rank in serv.roles:
-			if rank.name == "NSFW Artist":
-				await message.author.remove_roles( rank)
-				await message.channel.send( "```Markdown\nNSFW channels have been hidden.\n```")
+	# elif message.content.lower().startswith('!nsfwjoin'):
+	# 	serv = message.author.guild
+	# 	for rank in serv.roles:
+	# 		if rank.name == "NSFW Artist":
+	# 			await message.author.add_roles(rank)
+	# 			await message.channel.send( "```Markdown\nYou should now have access to the NSFW channels, Oh my!```")
+	# elif message.content.lower().startswith('!nsfwleave'):
+	# 	serv = message.author.guild
+	# 	for rank in serv.roles:
+	# 		if rank.name == "NSFW Artist":
+	# 			await message.author.remove_roles( rank)
+	# 			await message.channel.send( "```Markdown\nNSFW channels have been hidden.\n```")
 	elif message.content.lower().startswith('!artblock'):
 		fp = open('prompts.txt', 'r+',encoding="utf8")
 		await message.channel.send( "```Markdown\n# {0}\n```".format(random.choice(fp.readlines())))
