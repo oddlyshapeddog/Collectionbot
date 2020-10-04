@@ -52,40 +52,57 @@ logging.basicConfig(level = logging.ERROR)
 
 client = discord.Client(fetch_offline_members=True, heartbeat_timeout=90.0)
 
+SEPARATOR = '--------'
+
 @client.event
 async def on_ready():
 	global config
 	print('Bot Online. using {0} configuration'.format('LIVE' if config.live else 'TEST'))
-	print(client.user.name)
-	print(client.user.id)
-	print('------')
+	print('Bot name: {0}'.format(client.user.name))
+	print('Bot client ID: {0}'.format(client.user.id))
+	print(SEPARATOR)
 
-	adminChannel = config.adminChannel
+	try:
+		adminChannel = config.adminChannel
 
-	#Store the server and the bot command channel
-	config.tapeGuild = discord.utils.find(lambda s: s.name == config.guildName, client.guilds)
-	if (not config.tapeGuild):
-		raise Exception('Discord server not found: {0}'.format(config.guildName))
-	print("active server set to " + config.tapeGuild.name)
+		#Store the server and the bot command channel
+		config.tapeGuild = discord.utils.find(lambda s: s.name == config.guildName, client.guilds)
+		if (not config.tapeGuild):
+			raise Exception('Discord server not found: {0}'.format(config.guildName))
+		print("active server set to " + config.tapeGuild.name)
 
-	config.botChannel = discord.utils.find(lambda c: c.id == config.botChannelName or c.name == config.botChannelName, config.tapeGuild.channels)
-	if (not config.botChannel):
-		raise Exception('Channel not found: {0}'.format(config.botChannelName))
-	print("bot channel set to " + config.botChannel.name)
-	#admin role, admin actions require at least this role (or any with higher priority)
-	config.adminRole = discord.utils.find(lambda r: r.name == config.adminRoleName, config.tapeGuild.roles)
-	if (not config.adminRole):
-		raise Exception('Role not found: {0}'.format(config.adminRoleName))
-	print("admin role set to " + config.adminRole.name)
-	config.adoreEmoji = discord.utils.find(lambda e: e.id == config.adoreEmoji or e.name == config.adoreEmoji, config.tapeGuild.emojis)
-	if (not config.adoreEmoji):
-		raise Exception('Emoji not found: {0}'.format(config.adoreEmoji))
-	print("adore emoji set to " + config.adoreEmoji.name)
-	config.adminChannel = discord.utils.find(lambda c: c.id == config.adminChannel or c.name == config.adminChannel, config.tapeGuild.channels)
-	if (not config.adminChannel):
-		raise Exception('Channel not found: {0}'.format(adminChannel))
-	print("admin channel set to " + config.adminChannel.name)
-	await config.botChannel.send(config.on_join_message)
+		config.botChannel = discord.utils.find(lambda c: c.id == config.botChannelName or c.name == config.botChannelName, config.tapeGuild.channels)
+		if (not config.botChannel):
+			raise Exception('Channel not found: {0}'.format(config.botChannelName))
+		print("bot channel set to " + config.botChannel.name)
+		#admin role, admin actions require at least this role (or any with higher priority)
+		config.adminRole = discord.utils.find(lambda r: r.name == config.adminRoleName, config.tapeGuild.roles)
+		if (not config.adminRole):
+			raise Exception('Role not found: {0}'.format(config.adminRoleName))
+		print("admin role set to " + config.adminRole.name)
+		config.adoreEmoji = discord.utils.find(lambda e: e.id == config.adoreEmoji or e.name == config.adoreEmoji, config.tapeGuild.emojis)
+		if (not config.adoreEmoji):
+			raise Exception('Emoji not found: {0}'.format(config.adoreEmoji))
+		print("adore emoji set to " + config.adoreEmoji.name)
+		config.adminChannel = discord.utils.find(lambda c: c.id == config.adminChannel or c.name == config.adminChannel, config.tapeGuild.channels)
+		if (not config.adminChannel):
+			raise Exception('Channel not found: {0}'.format(adminChannel))
+		print("admin channel set to " + config.adminChannel.name)
+		print(SEPARATOR)
+	except Exception as e:
+		print('Bot initialization error:', e)
+		if (not client.is_closed()):
+			await client.close()
+		sys.exit(1)
+
+	try:
+		await config.botChannel.send(config.on_join_message)
+	except Exception as e:
+		print('Unable to post to #{0}'.format(config.botChannelName), e)
+		if (not client.is_closed()):
+			await client.close()
+		sys.exit(1)
+
 
 @client.event
 async def on_reaction_add(reaction, user):
@@ -298,4 +315,12 @@ scheduler.add_job(decayFunction, 'cron', hour=7, minute=2) #hour=7:02
 scheduler.add_job(questCompleteFunction, 'cron', hour=7, minute=4) #hour=7:04
 scheduler.add_job(raffle_notification, 'cron', day=1, hour=7, minute=15) #hour=7:15
 scheduler.start()
-client.run(discordKey) #Runs live or not live depending on flag set at top of file
+
+try:
+	client.run(discordKey) #Runs live or not live depending on flag set at top of file
+except discord.errors.HTTPException as httpException:
+	print ("Discord HTTP exception: {}".format(httpException))
+except discord.errors.LoginFailure as httpException:
+	print ("Discord login failure: {} Make sure your DISCORD_KEY environment variable is set to a valid Discord key.".format(httpException))
+except:
+	print ("Unexpected Discord error: {}".format(sys.exc_info()[0]))

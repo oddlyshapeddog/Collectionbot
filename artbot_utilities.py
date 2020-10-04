@@ -145,6 +145,10 @@ async def subXP(user,xp_amount):
 
 async def buyitem(session, client,itemName, price, author, channel):
 	boughtItem = False
+
+	# ensure the user is registered
+	registerMessageAuthor(session)
+
 	db_user = getDBUser(session, author.id)
 
 	if (db_user != None):
@@ -167,7 +171,7 @@ async def buyitem(session, client,itemName, price, author, channel):
 		else:
 			await channel.send( "```Markdown\n- Not enough credits. {0} needed, you have {1}```".format(price, buyer_amount))
 	else:
-		await channel.send( "```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
+		await channel.send( "```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact a mod.\n```")
 	return boughtItem
 
 async def checkQuests(session,config,usrId):
@@ -230,8 +234,8 @@ async def createRoles(config, serv):
 		await createRoleIfNotExists(serv, roleName)
 	await createRoleIfNotExists(serv, "Idea Machine")
 	await createRoleIfNotExists(serv, "Artists")
-	await createRoleIfNotExists(serv, "New Artist")
-	await createRoleIfNotExists(serv, "NSFW Artist")
+	# await createRoleIfNotExists(serv, "New Artist")
+	# await createRoleIfNotExists(serv, "NSFW Artist")
 
 async def updateRoles(session, config, serv):
 	#ensure all required roles exist
@@ -384,4 +388,40 @@ class Config():
 		with open(filename, 'w') as outfile:  
 			json.dump(data, outfile, indent=4)
 
-			
+async def registerMessageAuthor(session, message):
+	curdate = datetime.utcnow()
+	today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
+	already_registered = False
+	#try to find user in database using id
+	db_user = getDBUser(session, message.author.id)
+	serv = message.guild
+	foundrole = discord.utils.find(lambda r: r.name == 'Artists', message.author.roles)
+	na = discord.utils.find(lambda r: r.name == 'New Artist', message.author.roles)
+
+	#add a new user if there's no registered user
+	if (db_user == None):
+		#create new user object
+		new_user = User(name=message.author.name, level=1, id=message.author.id, startdate=curdate, currency=0, streak=0, expiry=curdate, submitted=0, raffle=0, promptsadded=0, totalsubmissions=0, currentxp=0, adores=0, highscore=0, decaywarning=True)
+		#add to session
+		session.add(new_user)
+		#make user's quest board
+		db_quests = session.query(QuestsList)
+		for quest in db_quests:
+			new_quester = QuestsMembers(usrId = message.author.id, questId = quest.questId, name=message.author.name,completed = False, progress = 0)
+			session.add(new_quester)
+		#give relevant roles
+		for rank in serv.roles:
+			if rank.name == "0+ Streak":
+				await message.author.add_roles(rank)
+		for rank in serv.roles:
+			if rank.name == "New Artist":
+				await message.author.add_roles(rank)
+		#commit session
+		session.commit()
+		# await message.channel.send( "```diff\n+ Successfully registered!\n```")
+	elif (db_user != None and foundrole == None and na == None):
+		aRole = discord.utils.find(lambda r: r.name == 'Artists', serv.roles)
+		await message.author.add_roles( aRole)
+		# await message.channel.send( "```Markdown\n# You're registered, I'll give you your Artist role back!\n```")
+	# else:
+		# await message.channel.send( "```Markdown\n# You're already registered!\n```")

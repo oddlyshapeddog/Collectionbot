@@ -131,13 +131,12 @@
     },
     "live_config": {
         "adminRoleName": "Bot Admins",
-        "guildName": "Oddly Shaped Dog",
-        "botChannelName": "bot-log",
+        "guildName": "Noelle's Nocturnals",
+        "botChannelName": "bot-maintenance",
         "submitChannels": [
-            "general",
-            "bot"
+            "nightbot"
         ],
-        "adminChannel": "bot-admin",
+        "adminChannel": "bot-maintenance",
         "adoreEmoji": "stove",
         "discordClientId": "YOUR_DISCORD_CLIENT_ID",
         "discordKey": "YOUR_DISCORD_KEY"
@@ -145,7 +144,7 @@
     "test_config": {
         "adminRoleName": "Bot Admins",
         "guildName": "Oddly Shaped Dog",
-        "botChannelName": "bot-log-beta",
+        "botChannelName": "bot-admin-beta",
         "submitChannels": [
             "bot-beta"
         ],

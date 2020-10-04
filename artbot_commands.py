@@ -34,43 +34,43 @@ async def handleCommands(session, config, client, message):
 				await message.channel.send( "```diff\n- Invalid submission, need supported link or attachment```")
 		else:
 			await message.channel.send( "`Whoopsies, you can't submit in this channel!`")
-	elif message.content.lower().startswith('!register'):
-		curdate = datetime.utcnow()
-		today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
-		already_registered = False
-		#try to find user in database using id
-		db_user = getDBUser(session, message.author.id)
-		serv = message.guild
-		foundrole = discord.utils.find(lambda r: r.name == 'Artists', message.author.roles)
-		na = discord.utils.find(lambda r: r.name == 'New Artist', message.author.roles)
+	# elif message.content.lower().startswith('!register'):
+	# 	curdate = datetime.utcnow()
+	# 	today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
+	# 	already_registered = False
+	# 	#try to find user in database using id
+	# 	db_user = getDBUser(session, message.author.id)
+	# 	serv = message.guild
+	# 	foundrole = discord.utils.find(lambda r: r.name == 'Artists', message.author.roles)
+	# 	na = discord.utils.find(lambda r: r.name == 'New Artist', message.author.roles)
 
-		#add a new user if there's no registered user
-		if (db_user == None):
-			#create new user object
-			new_user = User(name=message.author.name, level=1, id=message.author.id, startdate=curdate, currency=0, streak=0, expiry=curdate, submitted=0, raffle=0, promptsadded=0, totalsubmissions=0, currentxp=0, adores=0, highscore=0, decaywarning=True)
-			#add to session
-			session.add(new_user)
-			#make user's quest board
-			db_quests = session.query(QuestsList)
-			for quest in db_quests:
-				new_quester = QuestsMembers(usrId = message.author.id, questId = quest.questId, name=message.author.name,completed = False, progress = 0)
-				session.add(new_quester)
-			#give relevant roles
-			for rank in serv.roles:
-				if rank.name == "0+ Streak":
-					await message.author.add_roles(rank)
-			for rank in serv.roles:
-				if rank.name == "New Artist":
-					await message.author.add_roles(rank)
-			#commit session
-			session.commit()
-			await message.channel.send( "```diff\n+ Successfully registered!\n```")
-		elif (db_user != None and foundrole == None and na == None):
-			aRole = discord.utils.find(lambda r: r.name == 'Artists', serv.roles)
-			await message.author.add_roles( aRole)
-			await message.channel.send( "```Markdown\n# You're registered, I'll give you your Artist role back!\n```")
-		else:
-			await message.channel.send( "```Markdown\n# You're already registered!\n```")
+	# 	#add a new user if there's no registered user
+	# 	if (db_user == None):
+	# 		#create new user object
+	# 		new_user = User(name=message.author.name, level=1, id=message.author.id, startdate=curdate, currency=0, streak=0, expiry=curdate, submitted=0, raffle=0, promptsadded=0, totalsubmissions=0, currentxp=0, adores=0, highscore=0, decaywarning=True)
+	# 		#add to session
+	# 		session.add(new_user)
+	# 		#make user's quest board
+	# 		db_quests = session.query(QuestsList)
+	# 		for quest in db_quests:
+	# 			new_quester = QuestsMembers(usrId = message.author.id, questId = quest.questId, name=message.author.name,completed = False, progress = 0)
+	# 			session.add(new_quester)
+	# 		#give relevant roles
+	# 		for rank in serv.roles:
+	# 			if rank.name == "0+ Streak":
+	# 				await message.author.add_roles(rank)
+	# 		for rank in serv.roles:
+	# 			if rank.name == "New Artist":
+	# 				await message.author.add_roles(rank)
+	# 		#commit session
+	# 		session.commit()
+	# 		await message.channel.send( "```diff\n+ Successfully registered!\n```")
+	# 	elif (db_user != None and foundrole == None and na == None):
+	# 		aRole = discord.utils.find(lambda r: r.name == 'Artists', serv.roles)
+	# 		await message.author.add_roles( aRole)
+	# 		await message.channel.send( "```Markdown\n# You're registered, I'll give you your Artist role back!\n```")
+	# 	else:
+	# 		await message.channel.send( "```Markdown\n# You're already registered!\n```")
 
 	elif message.content.lower().startswith('!help'):
 		helpString = """```Markdown
@@ -178,7 +178,7 @@ async def handleCommands(session, config, client, message):
 				await checkSingleUserQuests(session,config,message.author.id,0)
 
 		else:
-			await message.channel.send("```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
+			await message.channel.send("```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact a mod.\n```")
 	elif message.content.lower().startswith('!ach'):
 		serv = message.guild
 		ach_card = "```Python\n @{0} - Achievements\n# Note: unlocked ones are in green and denoted with a 🏆.\n```\n```diff\n".format(message.author.name)
@@ -225,23 +225,20 @@ async def handleCommands(session, config, client, message):
 		fp.close()
 	elif message.content.lower().startswith('!idea'):
 		serv = message.guild
-		#try to find user in database using id
-		db_user = getDBUser(session, message.author.id)
 
-		if (db_user == None):
-			await message.channel.send( "```diff\n- You need to be registered to suggest prompts.\n```")
-		else:
-			db_user.promptsadded = newpromptscore = db_user.promptsadded+1
-			session.commit()
-			await message.channel.send( "```diff\n+ Your prompt suggestion has been recorded!\n```")
-			if newpromptscore == 20:
-				for rank in serv.roles:
-					if rank.name == "Idea Machine":
-						await message.author.add_roles(rank)
-						await message.channel.send( "```Python\n @{0} Achievement Unlocked: Idea Machine\n```".format(message.author.name))
-			fp = open('prompts.txt','a+')
-			fp.write(message.content[6:]+'\n')
-			fp.close()
+		# make sure the user is registered
+		registerMessageAuthor(session, message)
+		db_user.promptsadded = newpromptscore = db_user.promptsadded+1
+		session.commit()
+		await message.channel.send( "```diff\n+ Your prompt suggestion has been recorded!\n```")
+		if newpromptscore == 20:
+			for rank in serv.roles:
+				if rank.name == "Idea Machine":
+					await message.author.add_roles(rank)
+					await message.channel.send( "```Python\n @{0} Achievement Unlocked: Idea Machine\n```".format(message.author.name))
+		fp = open('prompts.txt','a+')
+		fp.write(message.content[6:]+'\n')
+		fp.close()
 	elif message.content.lower().startswith('!8ball'):
 		if(True):
 			await message.channel.send('`{0} shakes their eight ball..`\n:8ball: `{1}`'.format(message.author.name, random.choice(config.eight_ball)))
@@ -322,7 +319,7 @@ async def handleCommands(session, config, client, message):
 			else:
 				await message.channel.send( "```Markdown\n- Not enough credits. {0} needed, you have {1}```".format(price, buyer_amount))
 		else:
-			await message.channel.send( "```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
+			await message.channel.send( "```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact a mod.\n```")
 	elif message.content.lower().startswith('!markraffle') and message.author.top_role >= config.adminRole:
 		try:
 			receiver = message.mentions[0]
@@ -349,30 +346,31 @@ async def handleCommands(session, config, client, message):
 		item_name = parse[1].lower()
 		price = 0
 		serv = message.guild
+
+		# make sure the user is registered
+		registerMessageAuthor(session, message)
+
 		#try to find user in database using id
 		db_user = getDBUser(session, message.author.id)
 
-		if (db_user == None):
-			await message.channel.send("```diff\n- You were not found in sheet, make sure to register before you use the shop.\n```")
+		buyer_currency = db_user.currency
+		fp = open('shop.txt','r+')
+		items_list = fp.readlines()
+		price = None
+		for items in items_list:
+			if items.lower().startswith(item_name):
+				price = int(items.split("-")[1])
+		fp.close()
+		if price == None:
+			await message.channel.send("```diff\n- That item does not exist!```")
+		elif price > buyer_currency:
+			await message.channel.send("```diff\n- Not enough credits. {0} needed, you have {1}\n```".format(price,buyer_currency))
 		else:
-			buyer_currency = db_user.currency
-			fp = open('shop.txt','r+')
-			items_list = fp.readlines()
-			price = None
-			for items in items_list:
-				if items.lower().startswith(item_name):
-					price = int(items.split("-")[1])
-			fp.close()
-			if price == None:
-				await message.channel.send("```diff\n- That item does not exist!```")
-			elif price > buyer_currency:
-				await message.channel.send("```diff\n- Not enough credits. {0} needed, you have {1}\n```".format(price,buyer_currency))
+			purchase = await buyitem(session,client,"{0}".format(item_name), price, message.author, message.channel)
+			if(purchase):
+				await message.channel.send("```diff\n+ Successfully payed {0} credits for {1}. Your total balance is now: {2}\n```".format(price,item_name,db_user.currency))
 			else:
-				purchase = await buyitem(session,client,"{0}".format(item_name), price, message.author, message.channel)
-				if(purchase):
-					await message.channel.send("```diff\n+ Successfully payed {0} credits for {1}. Your total balance is now: {2}\n```".format(price,item_name,db_user.currency))
-				else:
-					await message.channel.send("```diff\n+{0} was not purchased```".format(item_name))
+				await message.channel.send("```diff\n+{0} was not purchased```".format(item_name))
 	elif message.content.lower().startswith('!override'):
 		override_string = message.content.split(" ")
 		#get user ID to roll back
@@ -533,7 +531,7 @@ async def handleCommands(session, config, client, message):
 		session.close()
 		sys.exit(5)
 	elif message.content.lower() == "!reset" and (message.author.top_role >= config.adminRole):
-		await message.channel.send("Resetting BotRoss (assuming Whatsa did his job right), bye byeee~")
+		await message.channel.send("Resetting BotRoss, bye byeee~")
 		session.close()
 		sys.exit()
 	elif message.content.lower().startswith("!getraffle") and (message.author.top_role >= config.adminRole):
@@ -595,46 +593,46 @@ async def handleCommands(session, config, client, message):
 			print("Raffle Reset timed out")
 
 	elif message.content.lower().startswith('!streakwarning'):
+		# ensure the user is registered
+		registerMessageAuthor(session, message)
+
 		#find database user
 		db_user = getDBUser(session, message.author.id)
 
 		#on or off
 		sp = message.content.split(" ")
 
-		if(db_user != None):
-			choice = True
-			if(len(sp) > 1):
-				if(sp[1].lower() == "on"): #command to turn on
-					choice = True
-				elif(sp[1].lower() == "off"): #command to turn off
-					choice = False
-				else:
-					await message.channel.send( "```Markdown\n# Command has been entered incorrectly, please use !streakwarning on or !streakwarning off\n```")
-					return #exit the method
-			else: #Just show whether it's on or off
-				status_string = "ON" if db_user.decaywarning == True else "OFF"
-				await message.channel.send( "```Markdown\n# PM warnings are currently turned " + status_string + ". Use !streakwarning on or !streakwarning off to change.\n```")
+		choice = True
+		if(len(sp) > 1):
+			if(sp[1].lower() == "on"): #command to turn on
+				choice = True
+			elif(sp[1].lower() == "off"): #command to turn off
+				choice = False
+			else:
+				await message.channel.send( "```Markdown\n# Command has been entered incorrectly, please use !streakwarning on or !streakwarning off\n```")
 				return #exit the method
+		else: #Just show whether it's on or off
+			status_string = "ON" if db_user.decaywarning == True else "OFF"
+			await message.channel.send( "```Markdown\n# PM warnings are currently turned " + status_string + ". Use !streakwarning on or !streakwarning off to change.\n```")
+			return #exit the method
 
-			curr_mode = db_user.decaywarning
-			choice_string = "ON" if choice == True else "OFF"
-			if(choice == curr_mode):
-				#just tell the user if we're not changing the status
-				await message.channel.send( "```Markdown\n# PM warnings are already " + choice_string + "\n```")
-			else: #otherwise ask the user for confirmation
-				await message.channel.send( "```Python\n@{0}\n```\n```Markdown\n# You're about to you're about to turn ".format(message.author.name) + choice_string + " PM warnings for your streak, to confirm this change type !yes, to decline, type !no.\n```")
-				try:
-					confirm = await confirmDecision(client, message.author)
-					if(confirm): #if the user confirms update the database
-						db_user.decaywarning = choice
-						session.commit() #always commit the session after changes
-						await message.channel.send("```diff\n+ PM warnings have been turned "+ choice_string + "\n```")
-					else:
-						await message.channel.send( "```Markdown\n# PM warnings are unchanged\n```")
-				except:
-					print("{0} warning mode unchanged".format(message.author.name))
-		else:
-			await message.channel.send( "```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
+		curr_mode = db_user.decaywarning
+		choice_string = "ON" if choice == True else "OFF"
+		if(choice == curr_mode):
+			#just tell the user if we're not changing the status
+			await message.channel.send( "```Markdown\n# PM warnings are already " + choice_string + "\n```")
+		else: #otherwise ask the user for confirmation
+			await message.channel.send( "```Python\n@{0}\n```\n```Markdown\n# You're about to you're about to turn ".format(message.author.name) + choice_string + " PM warnings for your streak, to confirm this change type !yes, to decline, type !no.\n```")
+			try:
+				confirm = await confirmDecision(client, message.author)
+				if(confirm): #if the user confirms update the database
+					db_user.decaywarning = choice
+					session.commit() #always commit the session after changes
+					await message.channel.send("```diff\n+ PM warnings have been turned "+ choice_string + "\n```")
+				else:
+					await message.channel.send( "```Markdown\n# PM warnings are unchanged\n```")
+			except:
+				print("{0} warning mode unchanged".format(message.author.name))
 
 	#admin command - give xp or take xp
 	# new ex. !xp 300 @mentioned users
@@ -860,9 +858,9 @@ async def handleCommands(session, config, client, message):
 		markedQuest = None
 
 		if(db_user == None):
-			await message.channel.send("```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
+			await message.channel.send("```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact a mod.\n```")
 		elif(db_quester == None):
-			await message.channel.send("```diff\n- I couldn't find your name on the quest board. Are you sure you're signed up? If you are, contact an admin immediately.\n```")
+			await message.channel.send("```diff\n- I couldn't find your name on the quest board. Are you sure you're signed up? If you are, contact a mod.\n```")
 		else:
 			if(len(parse) > 1 and isNumber(parse[1])):
 				questnum = int(parse[1])
@@ -904,9 +902,9 @@ async def handleCommands(session, config, client, message):
 		parse = message.content.split(" ")
 
 		if(db_user == None):
-			await message.channel.send("```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
+			await message.channel.send("```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact a mod.\n```")
 		elif(db_quester == None):
-			await message.channel.send("```diff\n- I couldn't find your name on the quest board. Are you sure you're signed up? If you are, contact an admin immediately.\n```")
+			await message.channel.send("```diff\n- I couldn't find your name on the quest board. Are you sure you're signed up? If you are, contact a mod.\n```")
 		else:
 
 			if(len(parse) > 1 and isNumber(parse[1])):
@@ -1045,6 +1043,8 @@ async def normalSubmit(session, config, message, userToUpdate):
 
 
 async def handleSubmit(session, config, message, userToUpdate, url):
+	registerMessageAuthor(session, message)
+
 	curdate = datetime.utcnow()
 	potentialstreak = curdate + timedelta(days=7)
 	today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
@@ -1053,68 +1053,65 @@ async def handleSubmit(session, config, message, userToUpdate, url):
 	db_user = getDBUser(session, userToUpdate.id)
 	#first find if we have  the user in our list
 
-	if (db_user == None):
-		await message.channel.send( "```diff\n- I couldn't find your name in our spreadsheet. Are you sure you're registered? If you are, contact an admin immediately.\n```")
+	#db_user is our member object
+
+	#check if already submitted
+	if db_user.submitted == 1:
+		print(str(userToUpdate.name) + ' already submitted')
+		await message.channel.send( "```diff\n- You seem to have submitted something today already!\n```")
+	#otherwise, do the submit
 	else:
-		#db_user is our member object
+		#update the submit quest
+		db_quester = getDBQuestMember(session,message.author.id,1)
+		if(db_quester != None):
+			db_quester.progress = 1
+			await checkSingleUserQuests(session,config,message.author.id,1)
 
-		#check if already submitted
-		if db_user.submitted == 1:
-			print(str(userToUpdate.name) + ' already submitted')
-			await message.channel.send( "```diff\n- You seem to have submitted something today already!\n```")
-		#otherwise, do the submit
+		#update all the stats
+		newscore = db_user.totalsubmissions+1
+		newcurrency = db_user.currency+10
+		current_streak = db_user.streak
+		new_streak = current_streak+1
+		current_xp = db_user.currentxp
+		xp_gained = 10
+		if(current_streak > 0):
+			xp_gained = xp_gained + round(math.log2(current_streak)*2)
+		current_level = db_user.level
+		next_level_required_xp = current_level*10 + 50
+		new_xp_total = current_xp + xp_gained
+		#if we levelled up, increase level
+		while new_xp_total >= next_level_required_xp:
+			current_level = current_level + 1
+			new_xp_total = new_xp_total - next_level_required_xp
+			db_user.level = str(current_level)
+			db_user.currentxp = str(new_xp_total)
+			await message.channel.send("```Markdown\n# @{0} Level Up! You are now level {1}!\n```".format(userToUpdate.name,current_level))
+		#otherwise just increase exp
 		else:
-			#update the submit quest
-			db_quester = getDBQuestMember(session,message.author.id,1)
-			if(db_quester != None):
-				db_quester.progress = 1
-				await checkSingleUserQuests(session,config,message.author.id,1)
-
-			#update all the stats
-			newscore = db_user.totalsubmissions+1
-			newcurrency = db_user.currency+10
-			current_streak = db_user.streak
-			new_streak = current_streak+1
-			current_xp = db_user.currentxp
-			xp_gained = 10
-			if(current_streak > 0):
-				xp_gained = xp_gained + round(math.log2(current_streak)*2)
-			current_level = db_user.level
-			next_level_required_xp = current_level*10 + 50
-			new_xp_total = current_xp + xp_gained
-			#if we levelled up, increase level
-			while new_xp_total >= next_level_required_xp:
-				current_level = current_level + 1
-				new_xp_total = new_xp_total - next_level_required_xp
-				db_user.level = str(current_level)
-				db_user.currentxp = str(new_xp_total)
-				await message.channel.send("```Markdown\n# @{0} Level Up! You are now level {1}!\n```".format(userToUpdate.name,current_level))
-			#otherwise just increase exp
-			else:
-				db_user.currentxp = str(new_xp_total)
-			#update high score if it's higher
-			if new_streak > db_user.highscore:
-				db_user.highscore = new_streak
-			#write all new values to our cells
-			db_user.totalsubmissions = newscore
-			db_user.currency = newcurrency
-			db_user.streak = new_streak
-			db_user.submitted = 1
-			db_user.expiry = potentialstreak
-			#and push all cells to the database
-			session.commit()
-			#print("finishing updating " + db_user.name + "'s stats")
-			await message.channel.send( "```diff\n+ @{0} Submission Successful! Score updated!\n+ {1}xp gained.```".format(userToUpdate.name,xp_gained))
-			#finally, add an adore to the submission
-			await message.add_reaction( config.adoreEmoji)
-			#print("submit complete")
-			#check if we can make the a new artist a full artist
-			aRole = discord.utils.find(lambda r: r.name == 'Artists', userToUpdate.roles)
-			if(aRole == None):
-				na = discord.utils.find(lambda r: r.name == 'New Artist', userToUpdate.roles)
-				if(na):
-					await userToUpdate.remove_roles(na)
-					await userToUpdate.add_roles(discord.utils.find(lambda r: r.name == 'Artists', message.guild.roles))
+			db_user.currentxp = str(new_xp_total)
+		#update high score if it's higher
+		if new_streak > db_user.highscore:
+			db_user.highscore = new_streak
+		#write all new values to our cells
+		db_user.totalsubmissions = newscore
+		db_user.currency = newcurrency
+		db_user.streak = new_streak
+		db_user.submitted = 1
+		db_user.expiry = potentialstreak
+		#and push all cells to the database
+		session.commit()
+		#print("finishing updating " + db_user.name + "'s stats")
+		await message.channel.send( "```diff\n+ @{0} Submission Successful! Score updated!\n+ {1}xp gained.```".format(userToUpdate.name,xp_gained))
+		#finally, add an adore to the submission
+		await message.add_reaction( config.adoreEmoji)
+		#print("submit complete")
+		#check if we can make the a new artist a full artist
+		aRole = discord.utils.find(lambda r: r.name == 'Artists', userToUpdate.roles)
+		if(aRole == None):
+			na = discord.utils.find(lambda r: r.name == 'New Artist', userToUpdate.roles)
+			if(na):
+				await userToUpdate.remove_roles(na)
+				await userToUpdate.add_roles(discord.utils.find(lambda r: r.name == 'Artists', message.guild.roles))
 
 
 async def createQuestTable(session):
