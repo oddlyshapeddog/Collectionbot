@@ -22,7 +22,7 @@ async def handleCommands(session, config, client, message):
 				# do linksubmit
 				print("link submission")
 				await linkSubmit(session, config, message, message.author)
-			elif (message.attachments != None):
+			elif (message.attachments != None and len(message.attachments) > 0):
 				try:
 					print("normal submission")
 					#normal submit.
