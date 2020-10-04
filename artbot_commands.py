@@ -17,7 +17,7 @@ async def handleCommands(session, config, client, message):
 			#print(message.embeds[0].thumbnail.url)
 			#print(message.embeds[0].thumbnail.proxy_url)
 			#print(message.embeds[0].provider)
-			filetypes = [".gif",".jpg",".jpeg",".png","twitter.com/","deviantart.com/","derpibooru.org/"]
+			filetypes = config.allowed_submission_filetypes
 			if(("https://" in message.content.lower() or "http://" in message.content.lower()) and (any(u in message.content.lower() for u in filetypes))):
 				# do linksubmit
 				print("link submission")
@@ -74,22 +74,20 @@ async def handleCommands(session, config, client, message):
 
 	elif message.content.lower().startswith('!help'):
 		helpString = """```Markdown
-# Here's a quick little starter guide for all of you happy little artists wishing to participate.
-# !register will add you to our spreadsheet where we keep track of every submission you make
-# To submit content, drag and drop the file (.png, .gif, .jpg) into discord and add '!submit' as a comment to it.
+# Here's a quick little starter guide for all of you happy little artists wishing to earn experience by submitting artwork.
+# To submit content, drag and drop the file (.png, .gif, .jpg) into {0} and add '!submit' as a comment to it.
 # If you'd like to submit via internet link, make sure you right click the image and select 'copy image location' and submit that URL using the !submit command.
 # The !timeleft command will let you know how much longer you have left to submit for the day!
-# To see your current scorecard, type !stats 
+# To see your current scorecard, type !stats in the {1} channel
 # To see your achievement status, type !ach
-# Override your role colour using !override [Role Number], or !override none to clear an active override.
 # To turn on or off the PM warning system about your streak use the command !streakwarning on or !streakwarning off.
-```"""
+```""".format(config.submitChannels[0], config.botChannel)
 	# 	helpString = helpString . """```diff
 	# - For those of our older artists, you may access the nsfw channels by typing !nsfwjoin and you can hide those channels by typing !nsfwleave. 
 	# - When submitting nsfwcontent please use the r18 channels respectively!!
 	# ```"""
 		await message.channel.send( helpString)
-	elif message.content.lower().startswith('!stats') and message.channel == config.botChannel:
+	elif message.content.lower().startswith('!stats'):
 		#try to find user in database using id
 		db_user = getDBUser(session, message.author.id)
 
@@ -978,20 +976,20 @@ async def handleCommands(session, config, client, message):
 						print("replacing role for {0}".format(user.name))
 						await user.remove_roles(aRole)
 						await user.add_roles(discord.utils.find(lambda r: r.name == 'New Artist', message.guild.roles))				
-	elif message.content.lower().startswith('!battle') and message.channel == config.botChannel:
+	# elif message.content.lower().startswith('!battle') and message.channel == config.botChannel:
 
-		value = random.randint(1,20)
+	# 	value = random.randint(1,20)
 
-		if(value == 1):
-			await message.channel.send( "The air is offended that you punched it, so it obliterates you.")
-		elif(value > 1 and value <= 5):
-			await message.channel.send( "You punch the air, the air judges you for it.")
-		elif(value > 5 and value <= 10):
-			await message.channel.send( "You punch the air, it is mildly inconvenienced by your show of violence.")
-		elif(value > 10 and value <= 18):
-			await message.channel.send( "You realize punching the air is not the solution, so you stab it instead.  Nothing happens.")
-		elif(value == 20 or value == 19):
-			await message.channel.send( "***NOBODY EXPECTS THE SPANISH INQUISITION!***")
+	# 	if(value == 1):
+	# 		await message.channel.send( "The air is offended that you punched it, so it obliterates you.")
+	# 	elif(value > 1 and value <= 5):
+	# 		await message.channel.send( "You punch the air, the air judges you for it.")
+	# 	elif(value > 5 and value <= 10):
+	# 		await message.channel.send( "You punch the air, it is mildly inconvenienced by your show of violence.")
+	# 	elif(value > 10 and value <= 18):
+	# 		await message.channel.send( "You realize punching the air is not the solution, so you stab it instead.  Nothing happens.")
+	# 	elif(value == 20 or value == 19):
+	# 		await message.channel.send( "***NOBODY EXPECTS THE SPANISH INQUISITION!***")
 	elif message.content.lower().startswith('!questaward') and message.author.top_role >= config.adminRole:
 		#grants an achievement.
 		parse = message.content.split("-")
@@ -1018,9 +1016,9 @@ async def handleCommands(session, config, client, message):
 						db_quester.progress = 1
 						db_user.currency = db_user.currency + db_questitem.award
 						await checkSingleUserQuests(session, config,person.id,int(quest_id))
-						await config.botChannel.send("`Awarded {0} currency!`".format(db_questitem.award))
+						await config.adminBotChannel.send("`Awarded {0} currency!`".format(db_questitem.award))
 					else:
-						await config.botChannel.send("<@{0}>, does not have quest {1}! please check if the user is signed up for quests and if the admin selected the right quest".format(person.id,quest_id))
+						await config.adminBotChannel.send("<@{0}>, does not have quest {1}! please check if the user is signed up for quests and if the admin selected the right quest".format(person.id,quest_id))
 
 				await message.channel.send( "```Markdown\n# All quest entrants marked!\n```")
 			else:

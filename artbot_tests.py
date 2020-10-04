@@ -19,7 +19,7 @@ from create_databases import Base, User, Contest, QuestsMembers, QuestsList
 async def testCommands(session, config, client, message):
 	if(config.live): return #We don't want to do this on a live server
 
-	message = await config.botChannel.send( "TEST MESSAGE")
+	message = await config.adminBotChannel.send( "TEST MESSAGE")
 	message.content = "!REGISTER"
 	
 	

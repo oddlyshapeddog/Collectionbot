@@ -17,6 +17,15 @@
             "Prompts Added": 12,
             "Current XP": 13
         },
+        "allowed_submission_filetypes": [
+            ".gif",
+            ".jpg",
+            ".jpeg",
+            ".png",
+            "twitter.com/",
+            "deviantart.com/",
+            "derpibooru.org/"
+        ],
         "months": {
             "1": "January",
             "2": "February",
@@ -71,7 +80,46 @@
             "Override (300+)",
             "New Artist",
             "The Order of Secrets",
-            "Bot Admins"
+            "Bot Admins",
+            "☄️Moderator",
+            "☄️YAGPDB.xyz",
+            "☄️KitRobit",
+            "📣 Collaborator",
+            "📣 Priority Speaker",
+            "🟣 Live",
+            "✨Commissions Open",
+            "☄️Moderator",
+            "☄️Art Prompts",
+            "☄️MuxyBot",
+            "☄️Nightbot",
+            "☄️Patreon",
+            "☄️Streamlabs",
+            "☄️Wordpress",
+            "💎VIP",
+            "💠Nitro Booster",
+            "💫Patreon Patron",
+            "🌟Twitch Subscriber³",
+            "🌟Twitch Subscriber²",
+            "🌟Twitch Subscriber¹",
+            "🌟Twitch Subscribers",
+            "⭐Regular",
+            "Commissions Closed",
+            "He",
+            "She",
+            "They",
+            "🍎",
+            "📐",
+            "🌑",
+            "🌕",
+            "🌓",
+            "🏞️",
+            "↔️",
+            "😺",
+            "👥",
+            "👤",
+            "🛑 2",
+            "🛑 1",
+            "@everyone"
         ],
         "override_roles": [
             "Override (5+)",
@@ -130,13 +178,14 @@
         ]
     },
     "live_config": {
-        "adminRoleName": "Bot Admins",
+        "adminRoleName": "☄️Moderator",
         "guildName": "Noelle's Nocturnals",
-        "botChannelName": "bot-maintenance",
+        "botChannelName": "nightbot",
         "submitChannels": [
-            "nightbot"
+            "nightbot",
+            "share-your-art"
         ],
-        "adminChannel": "bot-maintenance",
+        "adminChannelName": "bot-maintenance",
         "adoreEmoji": "stove",
         "discordClientId": "YOUR_DISCORD_CLIENT_ID",
         "discordKey": "YOUR_DISCORD_KEY"
@@ -148,7 +197,7 @@
         "submitChannels": [
             "bot-beta"
         ],
-        "adminChannel": "bot-admin-beta",
+        "adminChannelName": "bot-admin-beta",
         "adoreEmoji": "stove",
         "discordClientId": "YOUR_DISCORD_CLIENT_ID",
         "discordKey": "YOUR_DISCORD_KEY"

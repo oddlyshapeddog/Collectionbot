@@ -314,6 +314,7 @@ class Config():
 	on_join_message = ''
 	on_leave_message = ''
 	spreadsheet_schema = {}
+	allowed_submission_filetypes = []
 	months = {}
 	nonach_roles = []
 	override_roles = []
@@ -338,6 +339,7 @@ class Config():
 		self.on_join_message = data['all_config']['on_join_message']
 		self.on_leave_message = data['all_config']['on_leave_message']
 		self.spreadsheet_schema = data['all_config']['spreadsheet_schema']
+		self.allowed_submission_filetypes = data['all_config']['allowed_submission_filetypes']
 		self.months = data['all_config']['months']
 		self.nonach_roles = data['all_config']['nonach_roles']
 		self.override_roles = data['all_config']['override_roles']
@@ -348,11 +350,11 @@ class Config():
 		self.adminRoleName = data[key]['adminRoleName']
 		self.guildName = data[key]['guildName']
 		self.botChannelName = data[key]['botChannelName']
+		self.adminChannelName = data[key]['adminChannelName']
 		self.submitChannels = data[key]['submitChannels']
 		self.discordClientId = data[key]['discordClientId']
 		self.adoreEmoji = data[key]['adoreEmoji']
 		self.discordKey = data[key]['discordKey']
-		self.adminChannel = data[key]['adminChannel']
 		
 	def WriteToFile(self, filename):
 		data = {}
@@ -370,6 +372,7 @@ class Config():
 			'adminRoleName' : self.adminRoleName,
 			'guildName' : self.guildName,
 			'botChannelName' : self.botChannelName,
+			'adminChannelName' : self.adminChannelName,
 			'submitChannels' : self.submitChannels,
 			'adoreEmoji' : self.adoreEmoji,
 			'discordClientId' : self.discordClientId,
@@ -380,6 +383,7 @@ class Config():
 			'adminRoleName' : self.adminRoleName,
 			'guildName' : self.guildName,
 			'botChannelName' : self.botChannelName,
+			'adminChannelName' : self.adminChannelName,
 			'submitChannels' : self.submitChannels,
 			'adoreEmoji' : self.adoreEmoji,
 			'discordClientId' : self.discordClientId,

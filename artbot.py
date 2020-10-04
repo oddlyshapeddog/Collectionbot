@@ -63,8 +63,6 @@ async def on_ready():
 	print(SEPARATOR)
 
 	try:
-		adminChannel = config.adminChannel
-
 		#Store the server and the bot command channel
 		config.tapeGuild = discord.utils.find(lambda s: s.name == config.guildName, client.guilds)
 		if (not config.tapeGuild):
@@ -84,9 +82,9 @@ async def on_ready():
 		if (not config.adoreEmoji):
 			raise Exception('Emoji not found: {0}'.format(config.adoreEmoji))
 		print("adore emoji set to " + config.adoreEmoji.name)
-		config.adminChannel = discord.utils.find(lambda c: c.id == config.adminChannel or c.name == config.adminChannel, config.tapeGuild.channels)
+		config.adminChannel = discord.utils.find(lambda c: c.id == config.adminChannelName or c.name == config.adminChannelName, config.tapeGuild.channels)
 		if (not config.adminChannel):
-			raise Exception('Channel not found: {0}'.format(adminChannel))
+			raise Exception('Channel not found: {0}'.format(adminChannelName))
 		print("admin channel set to " + config.adminChannel.name)
 		print(SEPARATOR)
 	except Exception as e:
@@ -96,9 +94,9 @@ async def on_ready():
 		sys.exit(1)
 
 	try:
-		await config.botChannel.send(config.on_join_message)
+		await config.adminChannel.send(config.on_join_message)
 	except Exception as e:
-		print('Unable to post to #{0}'.format(config.botChannelName), e)
+		print('Unable to post to #{0}'.format(config.adminChannelName), e)
 		if (not client.is_closed()):
 			await client.close()
 		sys.exit(1)
@@ -161,9 +159,9 @@ async def on_message(message):
 async def roletask():
 	#Do a role update
 	print("Performing Role Update")
-	await config.botChannel.send( "```Markdown\n# Updating Roles Automatically...\n```")
+	await config.adminChannel.send( "```Markdown\n# Updating Roles Automatically...\n```")
 	await updateRoles(session, config,config.tapeGuild)
-	await config.botChannel.send( "```diff\n+ Updating roles was a happy little success!\n```")
+	await config.adminChannel.send( "```diff\n+ Updating roles was a happy little success!\n```")
 
 def housekeeper_start():
 	thread = threading.Thread(target=housekeeper_create_loop)
