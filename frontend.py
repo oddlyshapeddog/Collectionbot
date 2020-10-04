@@ -3,11 +3,13 @@ import json
 import os
 import ssl
 import socketserver
+from os import environ
 from artbot_utilities import Config
 
 config = Config()
 config.live = False #Use this flag to change between live and test config
-config.LoadFromFile('config.txt')
+config.LoadFromFile('config.json')
+config.discordClientId =  environ.get('DISCORD_CLIENT_ID')
 
 certpath = os.path.join(os.getcwd(), 'cert.pem')
 keypath = os.path.join(os.getcwd(), 'key.pem')
@@ -26,15 +28,15 @@ class CustomRequestHandler(SimpleHTTPRequestHandler):
         else:
             SimpleHTTPRequestHandler.do_GET(self)
 
-def run(server_class=HTTPServer, handler_class=CustomRequestHandler, port=8000, directory=cwd):
+def run(server_class=HTTPServer, handler_class=CustomRequestHandler, port=8080, directory=cwd):
     server_address = ('', port)
     httpd = server_class(server_address, handler_class)
     httpd.directory = directory
-    httpd.socket = ssl.wrap_socket (
-        httpd.socket, 
-        keyfile=keypath, 
-        certfile=certpath,
-        server_side=True)
+    # httpd.socket = ssl.wrap_socket (
+    #     httpd.socket, 
+    #     keyfile=keypath, 
+    #     certfile=certpath,
+    #     server_side=True)
     print("serving {0} at https://localhost:{1}".format(directory, port))
     httpd.serve_forever()
 
