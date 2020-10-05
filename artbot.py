@@ -89,16 +89,12 @@ async def on_ready():
 		print(SEPARATOR)
 	except Exception as e:
 		print('Bot initialization error:', e)
-		if (not client.is_closed()):
-			await client.close()
 		sys.exit(1)
 
 	try:
 		await config.adminChannel.send(config.on_join_message)
 	except Exception as e:
 		print('Unable to post to #{0}'.format(config.adminChannelName), e)
-		if (not client.is_closed()):
-			await client.close()
 		sys.exit(1)
 
 

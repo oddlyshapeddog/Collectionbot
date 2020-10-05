@@ -183,10 +183,15 @@
         "botChannelName": "nightbot",
         "submitChannels": [
             "nightbot",
-            "share-your-art"
+            "share-your-art",
+            "sketch-of-the-day",
+            "art-showcase",
+            "showcase",
+            "sketches",
+            "bot-maintenance"
         ],
         "adminChannelName": "bot-maintenance",
-        "adoreEmoji": "stove",
+        "adoreEmoji": "nmbShine",
         "discordClientId": "YOUR_DISCORD_CLIENT_ID",
         "discordKey": "YOUR_DISCORD_KEY"
     },

@@ -28,12 +28,12 @@ async def handleCommands(session, config, client, message):
 					#normal submit.
 					await normalSubmit(session, config, message, message.author)
 				except:
-					pass
+					await message.channel.send("Error while submitting! Please inform a mod.")
 			
 			else:
-				await message.channel.send( "```diff\n- Invalid submission, need supported link or attachment```")
+				await message.channel.send( "Invalid submission, need supported link or attachment")
 		else:
-			await message.channel.send( "`Whoopsies, you can't submit in this channel!`")
+			await message.channel.send( "Whoopsies, you can't submit in this channel!")
 	# elif message.content.lower().startswith('!register'):
 	# 	curdate = datetime.utcnow()
 	# 	today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
@@ -225,7 +225,7 @@ async def handleCommands(session, config, client, message):
 		serv = message.guild
 
 		# make sure the user is registered
-		registerMessageAuthor(session, message)
+		await registerMessageAuthor(session, message)
 		db_user.promptsadded = newpromptscore = db_user.promptsadded+1
 		session.commit()
 		await message.channel.send( "```diff\n+ Your prompt suggestion has been recorded!\n```")
@@ -346,7 +346,7 @@ async def handleCommands(session, config, client, message):
 		serv = message.guild
 
 		# make sure the user is registered
-		registerMessageAuthor(session, message)
+		await registerMessageAuthor(session, message)
 
 		#try to find user in database using id
 		db_user = getDBUser(session, message.author.id)
@@ -592,7 +592,7 @@ async def handleCommands(session, config, client, message):
 
 	elif message.content.lower().startswith('!streakwarning'):
 		# ensure the user is registered
-		registerMessageAuthor(session, message)
+		await registerMessageAuthor(session, message)
 
 		#find database user
 		db_user = getDBUser(session, message.author.id)
@@ -1041,7 +1041,7 @@ async def normalSubmit(session, config, message, userToUpdate):
 
 
 async def handleSubmit(session, config, message, userToUpdate, url):
-	registerMessageAuthor(session, message)
+	await registerMessageAuthor(session, message)
 
 	curdate = datetime.utcnow()
 	potentialstreak = curdate + timedelta(days=7)
