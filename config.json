@@ -1,6 +1,6 @@
 {
     "all_config": {
-        "on_join_message": "!enter",
+        "on_join_message": "",
         "on_leave_message": "Bye!",
         "spreadsheet_schema": {
             "Discord Name": 1,

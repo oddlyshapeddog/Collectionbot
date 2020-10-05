@@ -92,7 +92,8 @@ async def on_ready():
 		sys.exit(1)
 
 	try:
-		await config.adminChannel.send(config.on_join_message)
+		if (config.on_join_message):
+			await config.adminChannel.send(config.on_join_message)
 	except Exception as e:
 		print('Unable to post to #{0}'.format(config.adminChannelName), e)
 		sys.exit(1)
