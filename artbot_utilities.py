@@ -239,7 +239,7 @@ async def createRoles(config, serv):
 
 async def updateRoles(session, config, serv):
 	#ensure all required roles exist
-	createRoles(config, serv)
+	await createRoles(config, serv)
 	#get all rows and put into memory
 	for dbUser in session.query(User).all():
 		streak = dbUser.streak
