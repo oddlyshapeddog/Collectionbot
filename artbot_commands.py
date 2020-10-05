@@ -225,7 +225,7 @@ async def handleCommands(session, config, client, message):
 		serv = message.guild
 
 		# make sure the user is registered
-		await registerMessageAuthor(session, message)
+		await registerMessageAuthor(session, config, message)
 		db_user.promptsadded = newpromptscore = db_user.promptsadded+1
 		session.commit()
 		await message.channel.send( "```diff\n+ Your prompt suggestion has been recorded!\n```")
@@ -346,7 +346,7 @@ async def handleCommands(session, config, client, message):
 		serv = message.guild
 
 		# make sure the user is registered
-		await registerMessageAuthor(session, message)
+		await registerMessageAuthor(session, config, message)
 
 		#try to find user in database using id
 		db_user = getDBUser(session, message.author.id)
@@ -364,7 +364,7 @@ async def handleCommands(session, config, client, message):
 		elif price > buyer_currency:
 			await message.channel.send("```diff\n- Not enough credits. {0} needed, you have {1}\n```".format(price,buyer_currency))
 		else:
-			purchase = await buyitem(session,client,"{0}".format(item_name), price, message.author, message.channel)
+			purchase = await buyitem(session, config, client,"{0}".format(item_name), price, message.author, message.channel)
 			if(purchase):
 				await message.channel.send("```diff\n+ Successfully payed {0} credits for {1}. Your total balance is now: {2}\n```".format(price,item_name,db_user.currency))
 			else:
@@ -395,7 +395,7 @@ async def handleCommands(session, config, client, message):
 					#check if high score allows it
 					elif( int(override_string) <= db_user.highscore):
 						#Now do the purchase code
-						purchase = await buyitem(session,client,"Role Override Streak ({0})".format(override_string), 100, message.author, message.channel)
+						purchase = await buyitem(session, config, client,"Role Override Streak ({0})".format(override_string), 100, message.author, message.channel)
 						if(purchase):
 							#remove old roles
 							await message.author.remove_roles(*orRoles)
@@ -592,7 +592,7 @@ async def handleCommands(session, config, client, message):
 
 	elif message.content.lower().startswith('!streakwarning'):
 		# ensure the user is registered
-		await registerMessageAuthor(session, message)
+		await registerMessageAuthor(session, config, message)
 
 		#find database user
 		db_user = getDBUser(session, message.author.id)
@@ -1041,7 +1041,7 @@ async def normalSubmit(session, config, message, userToUpdate):
 
 
 async def handleSubmit(session, config, message, userToUpdate, url):
-	await registerMessageAuthor(session, message)
+	await registerMessageAuthor(session, config, message)
 
 	curdate = datetime.utcnow()
 	potentialstreak = curdate + timedelta(days=7)

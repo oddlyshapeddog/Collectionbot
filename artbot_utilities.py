@@ -143,11 +143,11 @@ async def subXP(user,xp_amount):
 	user.level = str(current_level)
 	user.currentxp = str(new_xp_total)
 
-async def buyitem(session, client,itemName, price, author, channel):
+async def buyitem(session, config, client, itemName, price, author, channel):
 	boughtItem = False
 
 	# ensure the user is registered
-	registerMessageAuthor(session)
+	# registerMessageAuthor(session, config, )
 
 	db_user = getDBUser(session, author.id)
 
@@ -395,7 +395,7 @@ class Config():
 		with open(filename, 'w') as outfile:  
 			json.dump(data, outfile, indent=4)
 
-async def registerMessageAuthor(session, message):
+async def registerMessageAuthor(session, config, message):
 	curdate = datetime.utcnow()
 	today = "{0}-{1}-{2}".format(curdate.month, curdate.day, curdate.year)
 	already_registered = False
