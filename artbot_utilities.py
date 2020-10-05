@@ -402,7 +402,7 @@ async def registerMessageAuthor(session, message):
 	#try to find user in database using id
 	db_user = getDBUser(session, message.author.id)
 	serv = message.guild
-	foundrole = discord.utils.find(lambda r: r.name == 'Artists', message.author.roles)
+	foundrole = discord.utils.find(lambda r: r.name == config.submitterRoleName, message.author.roles)
 	na = discord.utils.find(lambda r: r.name == 'New Artist', message.author.roles)
 
 	#add a new user if there's no registered user
@@ -427,7 +427,7 @@ async def registerMessageAuthor(session, message):
 		session.commit()
 		# await message.channel.send( "```diff\n+ Successfully registered!\n```")
 	elif (db_user != None and foundrole == None and na == None):
-		aRole = discord.utils.find(lambda r: r.name == 'Artists', serv.roles)
+		aRole = discord.utils.find(lambda r: r.name == config.submitterRoleName, serv.roles)
 		await message.author.add_roles( aRole)
 		# await message.channel.send( "```Markdown\n# You're registered, I'll give you your Artist role back!\n```")
 	# else:
