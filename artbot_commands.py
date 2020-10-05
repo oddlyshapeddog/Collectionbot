@@ -41,7 +41,7 @@ async def handleCommands(session, config, client, message):
 	# 	#try to find user in database using id
 	# 	db_user = getDBUser(session, message.author.id)
 	# 	serv = message.guild
-	# 	foundrole = discord.utils.find(lambda r: r.name == 'Artists', message.author.roles)
+	# 	foundrole = discord.utils.find(lambda r: r.name == config.submitterRoleName, message.author.roles)
 	# 	na = discord.utils.find(lambda r: r.name == 'New Artist', message.author.roles)
 
 	# 	#add a new user if there's no registered user
@@ -66,7 +66,7 @@ async def handleCommands(session, config, client, message):
 	# 		session.commit()
 	# 		await message.channel.send( "```diff\n+ Successfully registered!\n```")
 	# 	elif (db_user != None and foundrole == None and na == None):
-	# 		aRole = discord.utils.find(lambda r: r.name == 'Artists', serv.roles)
+	# 		aRole = discord.utils.find(lambda r: r.name == config.submitterRoleName, serv.roles)
 	# 		await message.author.add_roles( aRole)
 	# 		await message.channel.send( "```Markdown\n# You're registered, I'll give you your Artist role back!\n```")
 	# 	else:
@@ -968,7 +968,7 @@ async def handleCommands(session, config, client, message):
 	elif message.content.lower().startswith('!newartists') and message.author.top_role >= config.adminRole:
 		#set users to New Artist if they have 0 total submits
 		for user in message.guild.members:
-			aRole = discord.utils.find(lambda r: r.name == 'Artists', user.roles)
+			aRole = discord.utils.find(lambda r: r.name == config.submitterRoleName, user.roles)
 			if(aRole):
 				db_user = getDBUser(session, user.id)
 				if(db_user):
@@ -1104,12 +1104,12 @@ async def handleSubmit(session, config, message, userToUpdate, url):
 		await message.add_reaction( config.adoreEmoji)
 		#print("submit complete")
 		#check if we can make the a new artist a full artist
-		aRole = discord.utils.find(lambda r: r.name == 'Artists', userToUpdate.roles)
+		aRole = discord.utils.find(lambda r: r.name == config.submitterRoleName, userToUpdate.roles)
 		if(aRole == None):
 			na = discord.utils.find(lambda r: r.name == 'New Artist', userToUpdate.roles)
 			if(na):
 				await userToUpdate.remove_roles(na)
-				await userToUpdate.add_roles(discord.utils.find(lambda r: r.name == 'Artists', message.guild.roles))
+				await userToUpdate.add_roles(discord.utils.find(lambda r: r.name == config.submitterRoleName, message.guild.roles))
 
 
 async def createQuestTable(session):

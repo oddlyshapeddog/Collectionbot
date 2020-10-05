@@ -233,7 +233,7 @@ async def createRoles(config, serv):
 	for roleName in config.streak_roles:
 		await createRoleIfNotExists(serv, roleName)
 	await createRoleIfNotExists(serv, "Idea Machine")
-	await createRoleIfNotExists(serv, "Artists")
+	await createRoleIfNotExists(serv, config.submitterRoleName)
 	# await createRoleIfNotExists(serv, "New Artist")
 	# await createRoleIfNotExists(serv, "NSFW Artist")
 
@@ -348,6 +348,7 @@ class Config():
 		#configure live or test data
 		key = 'live_config' if self.live == True else 'test_config'
 		self.adminRoleName = data[key]['adminRoleName']
+		self.submitterRoleName = data[key]['submitterRoleName']
 		self.guildName = data[key]['guildName']
 		self.botChannelName = data[key]['botChannelName']
 		self.adminChannelName = data[key]['adminChannelName']
@@ -370,6 +371,7 @@ class Config():
 		#data specific to live
 		data['live_config'] = {
 			'adminRoleName' : self.adminRoleName,
+			'submitterRoleName' : self.submitterRoleName,
 			'guildName' : self.guildName,
 			'botChannelName' : self.botChannelName,
 			'adminChannelName' : self.adminChannelName,
@@ -381,6 +383,7 @@ class Config():
 		#data specific to test
 		data['test_config'] = {
 			'adminRoleName' : self.adminRoleName,
+			'submitterRoleName' : self.submitterRoleName,
 			'guildName' : self.guildName,
 			'botChannelName' : self.botChannelName,
 			'adminChannelName' : self.adminChannelName,

@@ -1,6 +1,6 @@
 {
     "all_config": {
-        "on_join_message": "Hi",
+        "on_join_message": "!enter",
         "on_leave_message": "Bye!",
         "spreadsheet_schema": {
             "Discord Name": 1,
@@ -60,7 +60,9 @@
             "Community Admins",
             "Type !help for info",
             "@everyone",
+            "Showcase participant",
             "NSFW Artist",
+            "Artist",
             "Artists",
             "Head Admins",
             "999+ Streak",
@@ -179,6 +181,7 @@
     },
     "live_config": {
         "adminRoleName": "☄️Moderator",
+        "submitterRoleName": "Showcase participant",
         "guildName": "Noelle's Nocturnals",
         "botChannelName": "nightbot",
         "submitChannels": [
@@ -197,6 +200,7 @@
     },
     "test_config": {
         "adminRoleName": "Bot Admins",
+        "submitterRoleName": "Artist",
         "guildName": "Oddly Shaped Dog",
         "botChannelName": "bot-admin-beta",
         "submitChannels": [
