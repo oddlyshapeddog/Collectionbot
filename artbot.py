@@ -255,13 +255,13 @@ async def decayFunction():
 				if(days_left == 3):
 					try:
 						warn_count=warn_count+1
-						await user.send("You have 3 days until your streak begins to expire!\nIf you want to disable these warning messages then enter the command streakwarning off in the #bot-channel")
+						await user.send("You have 3 days until your streak begins to expire!\nIf you want to disable these warning messages then enter the command streakwarning off in #{0}".format(config.botChannelName))
 					except:
 						print('couldn\'t send 3day message to ' + curr_member.name)
 				elif(days_left == 1):
 					try:
 						warn_count=warn_count+1
-						await user.send("You have 1 day until your streak begins to expire!\nIf you want to disable these warning messages then enter the command streakwarning off in the #bot-channel")
+						await user.send("You have 1 day until your streak begins to expire!\nIf you want to disable these warning messages then enter the command streakwarning off in #{0}".format(config.botChannelName))
 					except:
 						print('couldn\'t send 1day message to ' + curr_member.name)
 		#else:
@@ -276,7 +276,7 @@ async def decayFunction():
 			#give a pm to warn about streak decay if member has left warnings on
 			if(curr_member.decaywarning == True and user != None):
 				decay_count=decay_count+1
-				await user.send("Your streak has decayed by {0} points! Your streak is now {1}.\nIf you want to disable these warning messages then enter the command streakwarning off in the #bot-channel".format(str(pointReduce),str(curr_member.streak)))
+				await user.send("Your streak has decayed by {0} points! Your streak is now {1}.\nIf you want to disable these warning messages then enter the command streakwarning off in #{2}".format(str(pointReduce),str(curr_member.streak), config.botChannelName))
 				
 	print("warned " + str(warn_count) + " and told " + str(decay_count) + " about decay")
 	session.commit() #commit decay changes to database
